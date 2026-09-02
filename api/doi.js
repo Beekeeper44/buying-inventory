@@ -54,6 +54,12 @@ const num = v => {
   const n = parseFloat(String(v == null ? '' : v).replace(/[$,\s]/g, ''));
   return isNaN(n) ? 0 : n;
 };
+/** blank is not zero — a missing DOI or output stays null */
+const numOrNull = v => {
+  if (v === null || v === undefined || String(v).trim() === '') return null;
+  const n = parseFloat(String(v).replace(/[$,\s]/g, ''));
+  return isNaN(n) ? null : n;
+};
 
 /** Run a saved question and map its columns by name, whatever their order. */
 async function runCard(id) {
@@ -85,8 +91,8 @@ async function runCard(id) {
     lower_band: String(pick(r, 'lowerband', 'band', 'priceband') || '').trim(),
     current_inventory: num(pick(r, 'currentinventory', 'inventory')),
     cards_kept: num(pick(r, 'cardskept', 'kept')),
-    doi: num(pick(r, 'doi', 'daysofinventory')),
-    daily_output: num(pick(r, 'dailyoutput', 'output'))
+    doi: numOrNull(pick(r, 'doi', 'daysofinventory')),
+    daily_output: numOrNull(pick(r, 'dailyoutput', 'output'))
   })).filter(r => r.pack || r.lower_band);
 
   cache.set(id, { at: Date.now(), rows });

@@ -67,14 +67,14 @@ textarea{width:100%;min-height:190px;font-size:12.5px;line-height:1.6;resize:ver
 .tot .v.green{color:var(--green)}.tot .v.gold{color:var(--gold)}.tot .v.red{color:var(--red)}
 .tot .s{color:var(--muted);font-size:11.5px;margin-top:7px}
 
-#tbl th{cursor:default}
-#lowTbl th{cursor:default}
-#lowTbl th:hover{color:var(--muted)}
+#tbl th{cursor:pointer}
+#lowTbl th{cursor:pointer}
+
 #lowTbl tbody tr{cursor:pointer}
 .tot.click{cursor:pointer;transition:background .15s}
 .tot.click:hover{background:#12160f}
 .tot.click .k:after{content:" ▸";color:var(--green)}
-#tbl th:hover{color:var(--muted)}
+
 
 /* category table */
 #catTbl td.catname{font-family:var(--display);font-weight:700;font-size:16px;display:flex;align-items:center;gap:9px}
@@ -103,6 +103,7 @@ tfoot td{border-top:1px solid var(--line);border-bottom:0;color:var(--text);font
 .d-low{background:rgba(201,162,39,.18);color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold-dim)}
 .d-ok{background:rgba(124,255,79,.12);color:var(--green);box-shadow:inset 0 0 0 1px var(--green-dim)}
 .d-over{background:rgba(92,200,255,.14);color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue-dim)}
+.d-none{background:none;color:var(--muted);box-shadow:none;opacity:.5}
 .legend{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:11.5px;letter-spacing:1px;align-items:center}
 .legend span{display:flex;align-items:center;gap:7px}
 .sw{width:11px;height:11px;border-radius:3px;display:inline-block}
@@ -128,7 +129,7 @@ tfoot td{border-top:1px solid var(--line);border-bottom:0;color:var(--text);font
 .chip.s3{color:var(--green);border-color:var(--green-dim)}
 .chip.bad{color:var(--red);border-color:var(--red-dim)}
 .age{font-family:var(--display);font-weight:700}
-#inTbl th,#wipTbl th,#dupTbl th{cursor:default}
+#inTbl th,#wipTbl th,#dupTbl th{cursor:pointer}
 #dupTbl td.wrapcell{max-width:260px}
 td.thumb{padding:6px 10px;width:52px}
 img.slab{width:38px;height:52px;object-fit:cover;border-radius:4px;border:1px solid var(--line);background:#111;cursor:zoom-in;display:block}
@@ -140,10 +141,16 @@ a.openlink:hover{border-color:var(--green)}
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:80;cursor:zoom-out;padding:40px}
 .lightbox.on{display:flex}
 .lightbox img{max-width:min(560px,90vw);max-height:90vh;border-radius:10px;border:1px solid var(--line)}
-#whTbl th{cursor:default}
-#whTbl th:hover{color:var(--muted)}
+#whTbl th{cursor:pointer}
+
 .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:22px 0 18px;align-items:end}
-.filters label{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:11px;letter-spacing:1.5px}
+.filters label{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:11px;letter-spacing:1.5px;position:relative}
+.filters .wrap{position:relative;display:block}
+.filters .wrap input,.filters .wrap textarea{padding-right:30px}
+.fclear{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--muted);
+  font-size:15px;line-height:1;padding:4px 6px;border-radius:4px;display:none;opacity:.7}
+.fclear:hover{color:var(--red);opacity:1;background:#161b16}
+.filters .wrap.filled .fclear{display:block}
 .filters input,.filters select,.filters textarea{width:100%}
 .filters textarea{min-height:38px;height:38px;resize:vertical;padding:10px 13px;font-size:13px;line-height:1.3}
 .filters textarea:focus{height:88px}
@@ -153,7 +160,7 @@ a.openlink:hover{border-color:var(--green)}
 #inTbl a,#wipTbl a{color:var(--green);text-decoration:none;border-bottom:1px solid var(--green-dim)}
 #inTbl a:hover,#wipTbl a:hover{border-bottom-color:var(--green)}
 .chip.s3{margin:2px 0}
-#inTbl th:hover,#wipTbl th:hover,#dupTbl th:hover{color:var(--muted)}
+#inTbl th:hover,#wipTbl th:hover,#dupTbl th:hover,#whTbl th:hover,#tbl th:hover,#fgTbl th:hover,#lowTbl th:hover{color:var(--green)}
 .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(18px);background:var(--green);color:#04140a;padding:12px 22px;border-radius:8px;font-size:13px;letter-spacing:1px;opacity:0;pointer-events:none;transition:.18s;z-index:60}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.err{background:var(--red);color:#fff}
@@ -419,7 +426,7 @@ $50,$25-$49,2634,176,15,193"></textarea>
     <div style="overflow-x:auto">
       <table id="dupTbl">
         <thead><tr>
-          <th></th><th>YEAR</th><th>SET</th><th>INSERT</th><th>PLAYER</th><th>#</th>
+          <th>IMAGE</th><th>SPORT</th><th>SET</th><th>INSERT</th><th>PLAYER</th><th>#</th>
           <th>PARALLEL</th><th>GRADE</th><th>TAG</th>
           <th>COPIES</th><th>AVG VALUE</th><th>EXPOSURE</th><th>AC</th>
         </tr></thead>
@@ -451,7 +458,6 @@ $50,$25-$49,2634,176,15,193"></textarea>
       <button class="btn ghost" id="wClear">CLEAR</button>
       <button class="btn ghost" id="wExport">EXPORT CSV</button>
       <a class="btn ghost" id="wMetabase" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center">OPEN IN METABASE ↗</a>
-      <span class="note" id="wHint">Any field takes a pasted list — commas or one per line.</span>
     </div>
   </div>
 
@@ -465,7 +471,7 @@ $50,$25-$49,2634,176,15,193"></textarea>
     <div style="overflow-x:auto">
       <table id="whTbl">
         <thead><tr>
-          <th></th><th>PO</th><th>TAG</th><th>SPORT</th><th>CERT</th><th>8AC</th>
+          <th>IMAGE</th><th>PO</th><th>TAG</th><th>SPORT</th><th>CERT</th><th>8AC</th>
           <th>GRADE</th><th>SET</th><th>INSERT</th><th>PLAYER</th><th>PARALLEL</th><th>EST. VALUE</th>
         </tr></thead>
         <tbody></tbody><tfoot></tfoot>
@@ -546,6 +552,11 @@ let ROWS=[], current=null, catSort="inv", catDir=-1;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const num=v=>{const n=parseFloat(String(v??"").replace(/[$,\s]/g,""));return isNaN(n)?0:n;};
+const numOrNull=v=>{
+  if(v===null||v===undefined||String(v).trim()==="") return null;
+  const n=parseFloat(String(v).replace(/[$,\s]/g,""));
+  return isNaN(n)?null:n;
+};
 const fmt=n=>Number(n||0).toLocaleString();
 const icon=c=>{
   const k=String(c||"").trim().toLowerCase();
@@ -557,16 +568,17 @@ const icon=c=>{
   return m[k]||"🎴";
 };
 function toast(m,err){const t=$("#toast");t.textContent=m;t.className="toast show"+(err?" err":"");clearTimeout(t._t);t._t=setTimeout(()=>t.className="toast"+(err?" err":""),2200);}
-function doiClass(d){ if(d===null||d===undefined||d==="")return""; d=num(d); return d<10?"d-crit":d<=20?"d-low":d<=90?"d-ok":"d-over"; }
+function doiClass(d){ if(d===null||d===undefined||d==="")return"d-none"; d=num(d); return d<10?"d-crit":d<=20?"d-low":d<=90?"d-ok":"d-over"; }
 function normalize(){
   ROWS.forEach(r=>{
     r.current_inventory=num(r.current_inventory);
     r.cards_kept=num(r.cards_kept);
     r.daily_output=num(r.daily_output);
     r.pack_v=num(r.pack);
-    r.doi=(r.doi===""||r.doi===null||r.doi===undefined)
-      ? (r.daily_output?Math.round(r.current_inventory/r.daily_output):null)
-      : num(r.doi);
+    r.daily_output=numOrNull(r.daily_output);
+    const given=numOrNull(r.doi);
+    r.doi = given!==null ? given
+          : (r.daily_output ? Math.round(r.current_inventory/r.daily_output) : null);
   });
 }
 function categories(){
@@ -574,12 +586,12 @@ function categories(){
   ROWS.forEach(r=>{
     const c=r.category||"Uncategorized";
     (m[c]=m[c]||{name:c,rows:[],inv:0,kept:0,out:0});
-    m[c].rows.push(r); m[c].inv+=r.current_inventory; m[c].kept+=r.cards_kept; m[c].out+=r.daily_output;
+    m[c].rows.push(r); m[c].inv+=r.current_inventory; m[c].kept+=r.cards_kept; m[c].out+=(r.daily_output||0);
   });
   return Object.values(m).map(c=>({
     ...c,
     doi: c.out ? Math.round(c.inv/c.out) : null,
-    crit: c.rows.filter(r=>r.doi!==null&&r.doi<10).length,
+    crit: c.rows.filter(r=>r.doi!==null&&r.doi>0&&r.doi<10).length,
     over: c.rows.filter(r=>r.doi!==null&&r.doi>90).length
   }));
 }
@@ -592,13 +604,16 @@ function renderOverview(){
         allOut=cats.reduce((s,c)=>s+c.out,0), allCrit=cats.reduce((s,c)=>s+c.crit,0),
         allOver=cats.reduce((s,c)=>s+c.over,0);
   $("#totals").innerHTML=`
-    <div class="tot"><div class="k">TOTAL CARDS</div><div class="v">${fmt(allInv)}</div><div class="s">across ${cats.length} categories</div></div>
+    <div class="tot click" data-drill="reset"><div class="k">TOTAL CARDS</div><div class="v">${fmt(allInv)}</div><div class="s">across ${cats.length} categories</div></div>
     <div class="tot"><div class="k">CARDS KEPT</div><div class="v gold">${fmt(allKept)}</div><div class="s">${allInv?((allKept/allInv)*100).toFixed(1):0}% of inventory</div></div>
     <div class="tot"><div class="k">DAILY OUTPUT</div><div class="v">${fmt(allOut)}</div><div class="s">cards leaving per day</div></div>
     <div class="tot"><div class="k">BLENDED DOI</div><div class="v ${allOut&&allInv/allOut<10?"red":allOut&&allInv/allOut<=20?"gold":"green"}">${allOut?Math.round(allInv/allOut):"—"}d</div><div class="s">total inventory ÷ daily output</div></div>
     <div class="tot ${allCrit?"click":""}" data-drill="crit"><div class="k">BANDS UNDER 10D</div><div class="v ${allCrit?"red":"green"}">${allCrit}</div><div class="s">${allCrit?"restock these first":"none thin"}</div></div>
     <div class="tot ${allOver?"click":""}" data-drill="over"><div class="k">BANDS OVER 90D</div><div class="v ${allOver?"gold":"green"}">${allOver}</div><div class="s">${allOver?"overstocked, slow to clear":"none stale"}</div></div>`;
-  $$("#totals .tot.click").forEach(t=>t.onclick=()=>openLow(t.dataset.drill));
+  $$("#totals .tot.click").forEach(t=>t.onclick=()=>{
+    if(t.dataset.drill==="reset") return resetOverview();
+    openLow(t.dataset.drill);
+  });
 
   if(q) cats=cats.filter(c=>c.name.toLowerCase().includes(q));
   cats=cats.map(c=>({...c,rate:c.inv?(c.kept/c.inv)*100:0,bands:c.rows.length}));
@@ -616,7 +631,7 @@ function renderOverview(){
       <td class="strong" style="color:var(--gold)">${fmt(c.kept)}</td>
       <td>${c.rate.toFixed(1)}%</td>
       <td>${fmt(c.out)}</td>
-      <td><span class="doi-cell ${doiClass(c.doi)}">${c.doi===null?"—":fmt(c.doi)}</span></td>
+      <td data-sort="${c.doi===null?"":c.doi}"><span class="doi-cell ${doiClass(c.doi)}">${c.doi===null?"—":fmt(c.doi)}</span></td>
       <td style="color:${c.crit?"var(--red)":"var(--muted)"}">${c.crit}</td>
       <td style="color:${c.over?"var(--blue)":"var(--muted)"}">${c.over}</td>
       <td style="color:var(--muted)">${c.bands}</td>
@@ -661,10 +676,10 @@ function detRows(){
 function renderDetail(){
   const all=ROWS.filter(r=>(r.category||"Uncategorized")===current);
   const inv=all.reduce((s,r)=>s+r.current_inventory,0), kept=all.reduce((s,r)=>s+r.cards_kept,0),
-        out=all.reduce((s,r)=>s+r.daily_output,0);
-  const crit=all.filter(r=>r.doi!==null&&r.doi<10), over=all.filter(r=>r.doi!==null&&r.doi>90);
+        out=all.reduce((s,r)=>s+(r.daily_output||0),0);
+  const crit=all.filter(r=>r.doi!==null&&r.doi>0&&r.doi<10), over=all.filter(r=>r.doi!==null&&r.doi>90);
   $("#detTotals").innerHTML=`
-    <div class="tot"><div class="k">CARDS IN INVENTORY</div><div class="v">${fmt(inv)}</div><div class="s">${all.length} pack bands</div></div>
+    <div class="tot click" id="detBack"><div class="k">CARDS IN INVENTORY</div><div class="v">${fmt(inv)}</div><div class="s">back to all categories</div></div>
     <div class="tot"><div class="k">CARDS KEPT</div><div class="v gold">${fmt(kept)}</div><div class="s">${inv?((kept/inv)*100).toFixed(1):0}% of inventory</div></div>
     <div class="tot"><div class="k">DAILY OUTPUT</div><div class="v">${fmt(out)}</div><div class="s">cards per day</div></div>
     <div class="tot"><div class="k">BLENDED DOI</div><div class="v ${out&&inv/out<10?"red":out&&inv/out<=20?"gold":"green"}">${out?Math.round(inv/out):"—"}d</div><div class="s">inventory ÷ daily output</div></div>
@@ -672,6 +687,7 @@ function renderDetail(){
     <div class="tot"><div class="k">OVER 90 DAYS</div><div class="v ${over.length?"gold":"green"}">${over.length}</div><div class="s">${over.length?esc(over.map(r=>r.lower_band).join(", ")):"none stale"}</div></div>`;
 
   const rows=detRows();
+  const back=$("#detBack"); if(back) back.onclick=()=>$("#backBtn").click();
   $("#detCount").textContent=`· ${rows.length} of ${all.length}`;
   $("#tbl tbody").innerHTML=rows.length?rows.map(r=>`
     <tr>
@@ -679,10 +695,11 @@ function renderDetail(){
       <td>${esc(r.lower_band)}</td>
       <td>${fmt(r.current_inventory)}</td>
       <td>${fmt(r.cards_kept)}</td>
-      <td><span class="doi-cell ${doiClass(r.doi)}">${r.doi===null?"—":fmt(r.doi)}</span></td>
-      <td>${fmt(r.daily_output)}</td>
+      <td data-sort="${r.doi===null?"":r.doi}"><span class="doi-cell ${doiClass(r.doi)}">${r.doi===null?"—":fmt(r.doi)}</span></td>
+      <td data-sort="${r.daily_output===null?"":r.daily_output}">${r.daily_output===null?"—":fmt(r.daily_output)}</td>
     </tr>`).join(""):`<tr><td colspan="6" class="note" style="padding:24px;text-align:left">No pack band matches that filter.</td></tr>`;
-  const fi=rows.reduce((s,r)=>s+r.current_inventory,0), fk=rows.reduce((s,r)=>s+r.cards_kept,0), fo=rows.reduce((s,r)=>s+r.daily_output,0);
+  const fi=rows.reduce((s,r)=>s+r.current_inventory,0), fk=rows.reduce((s,r)=>s+r.cards_kept,0),
+        fo=rows.reduce((s,r)=>s+(r.daily_output||0),0);
   $("#tbl tfoot").innerHTML=rows.length?`<tr><td>TOTAL</td><td>${rows.length} bands</td><td>${fmt(fi)}</td><td>${fmt(fk)}</td><td>${fo?Math.round(fi/fo):"—"}</td><td>${fmt(fo)}</td></tr>`:"";
 }
 $("#packSearch").oninput=renderDetail;
@@ -779,13 +796,20 @@ $("#demoData").onclick=()=>{
 
 /* ---------- low / high band drilldown ---------- */
 let lowMode=null;
+function resetOverview(){
+  bucketSel=null; lowMode=null;
+  $("#catSearch").value="";
+  $("#lowCard").classList.add("hidden");
+  if(current) $("#backBtn").click(); else renderOverview();
+}
+
 function openLow(mode){
   lowMode=mode;
   const q=$("#catSearch").value.trim().toLowerCase();
   const rows=ROWS.filter(r=>{
     if(q && !String(r.category||"").toLowerCase().includes(q)) return false;
     if(r.doi===null||r.doi===undefined) return false;
-    return mode==="crit" ? r.doi<10 : r.doi>90;
+    return mode==="crit" ? (r.doi>0&&r.doi<10) : r.doi>90;
   });
   $("#lowTitle").textContent = mode==="crit"
     ? `BANDS UNDER 10 DAYS · ${rows.length}`
@@ -797,8 +821,8 @@ function openLow(mode){
       <td>${esc(r.lower_band)}</td>
       <td>${fmt(r.current_inventory)}</td>
       <td>${fmt(r.cards_kept)}</td>
-      <td><span class="doi-cell ${doiClass(r.doi)}">${fmt(r.doi)}</span></td>
-      <td>${fmt(r.daily_output)}</td>
+      <td data-sort="${r.doi===null?"":r.doi}"><span class="doi-cell ${doiClass(r.doi)}">${r.doi===null?"—":fmt(r.doi)}</span></td>
+      <td data-sort="${r.daily_output===null?"":r.daily_output}">${r.daily_output===null?"—":fmt(r.daily_output)}</td>
     </tr>`).join(""):`<tr><td colspan="7" class="note" style="padding:24px;text-align:left">No bands in this range.</td></tr>`;
   $$("#lowTbl tbody tr[data-c]").forEach(tr=>tr.onclick=()=>openCat(tr.dataset.c));
   $("#lowCard").classList.remove("hidden");
@@ -1004,7 +1028,7 @@ async function loadDoiFromMetabase(){
   const rows=(body.rows||[]).map(r=>({
     category:r.category, pack:r.pack, lower_band:r.lower_band,
     current_inventory:num(r.current_inventory), cards_kept:num(r.cards_kept),
-    doi:num(r.doi), daily_output:num(r.daily_output)
+doi:numOrNull(r.doi), daily_output:numOrNull(r.daily_output)
   }));
   if(!rows.length) throw new Error("no rows returned");
   ROWS=rows; normalize(); persist();
@@ -1013,28 +1037,45 @@ async function loadDoiFromMetabase(){
   return {rows:rows.length, cats:[...new Set(rows.map(r=>r.category))].length, problems:body.problems||[]};
 }
 
-/** Question 36763 — stage, sport split and pending counts per PO. */
+/**
+ * Question 36763 — the STATUS column decides where a PO sits.
+ * A PO with cards in two statuses appears in both sections, with the cards
+ * that are actually in each. Sheet data supplies vendor, cost and sheet name.
+ */
 async function loadWipFromMetabase(){
   const res=await fetch("/api/wip");
   const body=await res.json().catch(()=>({ok:false,error:`HTTP ${res.status}`}));
   if(!body.ok) throw new Error(body.error||"wip unavailable");
-  const map={};
-  (body.results||[]).forEach(r=>{ map[r.po]=r; });
-  let hit=0;
-  FLOW.forEach(r=>{
-    const m=map[r.po_number]; if(!m) return;
-    hit++;
-    r._sports=m.sports&&m.sports.length?m.sports:r._sports;
-    r._tiers=m.buckets&&m.buckets.length?m.buckets.map(b=>({tier:b.tier,cards:b.cards})):r._tiers;
-    if(m.cards) r.cards=m.cards;
-    r._vaulted=m.vaulted; r._pending=m.pending; r._pendingTotal=m.pending_total;
-    // STATUS decides: released cards are finished goods, not WIP
-    if(r.stage!=="Duplicates") r.stage=m.stage==="Other"?r.stage:m.stage;
-    if(m.stage==="FG") r.stage_name="Released";
-    else if(m.stage==="WIP") r.stage_name=topPending(m.pending)||"In process";
+
+  const sheet={};
+  FLOW.filter(r=>r.stage!=="Duplicates").forEach(r=>{ sheet[r.po_number]=r; });
+  const dupes=FLOW.filter(r=>r.stage==="Duplicates");
+
+  const rows=(body.results||[]).map(m=>{
+    const base=sheet[m.po]||{};
+    return {
+      po_number:m.po,
+      vendor:base.vendor||"—",
+      sheet_name:base.sheet_name||("PO "+m.po_raw),
+      sheet_url:base.sheet_url||"",
+      cost:num(base.cost),
+      tracking:base.tracking||"", carrier:base.carrier||"",
+      pkg_total:num(base.pkg_total), pkg_received:num(base.pkg_received),
+      flag:base.flag||"", paid:!!base.paid,
+      received_date:base.received_date||"", ship_date:base.ship_date||"", eta:"",
+      cards:m.cards,
+      stage:m.stage,
+      status:m.status,
+      stage_name:m.stage==="FG"?"Released":(topPending(m.pending)||m.status),
+      _sports:m.sports, _tiers:(m.buckets||[]).map(b=>({tier:b.tier,cards:b.cards})),
+      _vaulted:m.vaulted, _pending:m.pending, _pendingTotal:m.pending_total
+    };
   });
+
+  if(!rows.length) throw new Error("no rows returned");
+  FLOW=rows.concat(dupes);
   persistFlow(); renderFlow();
-  return hit;
+  return rows.length;
 }
 
 function topPending(p){
@@ -1175,6 +1216,7 @@ function renderFlow(){
     <td>${fmt(sum(fg,"cards"))}</td><td>${fmt(fg.reduce((s,r)=>s+num(r._vaulted),0))}</td>
     <td>$${fmt(sum(fg,"cost"))}</td><td></td><td></td></tr>`:"";
   $("#pillFg").textContent=fg.length;
+  const uniq=list=>new Set(list.map(r=>r.po_number)).size;
 
   $("#pillIn").textContent=inb.length;
   $("#pillWip").textContent=wip.length;
@@ -1284,6 +1326,49 @@ function emptyRow(cols,err){
   return `<tr><td colspan="${cols}" class="note" style="padding:24px;text-align:left">Nothing matches these filters.</td></tr>`;
 }
 
+/* ---------- click-to-sort on every table ---------- */
+const SORTABLE=["#tbl","#lowTbl","#inTbl","#wipTbl","#fgTbl","#dupTbl","#whTbl"];
+
+/** Numbers, money, "12d", "3 / 5" and dates all sort as numbers; the rest as text. */
+function sortKey(cell){
+  const raw=cell.getAttribute("data-sort");
+  const t=(raw!==null?raw:cell.textContent).trim();
+  if(!t||t==="—") return {n:null,s:""};
+  const iso=t.match(/^\d{4}-\d{2}-\d{2}/);
+  if(iso) return {n:Date.parse(iso[0]),s:t.toLowerCase()};
+  const num=t.replace(/[,$]/g,"").match(/-?\d+(\.\d+)?/);
+  const looksNumeric=/^[-$\d\s.,/]+(d|%|days?)?$/i.test(t);
+  return {n:(num&&looksNumeric)?parseFloat(num[0]):null,s:t.toLowerCase()};
+}
+
+function sortTableBy(table,idx,dir){
+  const tb=table.tBodies[0]; if(!tb) return;
+  const rows=[...tb.rows].filter(r=>r.cells.length>idx&&!r.querySelector("td[colspan]"));
+  if(rows.length<2) return;
+  rows.sort((a,b)=>{
+    const A=sortKey(a.cells[idx]), B=sortKey(b.cells[idx]);
+    if(A.n!==null&&B.n!==null) return (A.n-B.n)*dir;
+    if(A.n!==null) return -1;              // values before blanks
+    if(B.n!==null) return 1;
+    return A.s.localeCompare(B.s)*dir;
+  });
+  rows.forEach(r=>tb.appendChild(r));
+}
+
+document.addEventListener("click",e=>{
+  const th=e.target.closest("th"); if(!th) return;
+  const table=th.closest("table"); if(!table) return;
+  if(!SORTABLE.includes("#"+table.id)) return;
+  const idx=[...th.parentNode.children].indexOf(th);
+  const label=th.textContent.replace(/[▲▼]/g,"").trim();
+  if(!label) return;                        // image column has no header text
+  const dir=(table.dataset.sortCol==String(idx)&&table.dataset.sortDir==="1")?-1:1;
+  table.dataset.sortCol=idx; table.dataset.sortDir=String(dir);
+  [...th.parentNode.children].forEach(h=>{ h.innerHTML=h.innerHTML.replace(/\s*<span class="ar">[▲▼]<\/span>/,""); });
+  th.innerHTML+=` <span class="ar">${dir===1?"▲":"▼"}</span>`;
+  sortTableBy(table,idx,dir);
+});
+
 function thumb(img,link){
   if(!img) return link?`<a class="openlink" href="${esc(link)}" target="_blank" rel="noopener" title="Open card">↗</a>`:"";
   const el=`<img class="slab" src="${esc(img)}" alt="" loading="lazy" data-full="${esc(img)}">`;
@@ -1301,8 +1386,40 @@ document.addEventListener("click",e=>{
   if(box&&box.classList.contains("on")) box.classList.remove("on");
 });
 document.addEventListener("keydown",e=>{
-  if(e.key==="Escape"&&$("#lightbox")) $("#lightbox").classList.remove("on");
+  if(e.key!=="Escape") return;
+  const el=document.activeElement;
+  if(el&&el.closest&&el.closest(".filters")&&"value" in el&&el.value){
+    el.value=""; if(el._syncClear) el._syncClear();
+    el.dispatchEvent(new Event("change",{bubbles:true}));
+    return;
+  }
+  if($("#lightbox")) $("#lightbox").classList.remove("on");
 });
+
+/** Wrap every filter input so it gets its own ✕, and keep them in sync. */
+function wireFieldClears(ids,onChange){
+  ids.forEach(id=>{
+    const el=$("#"+id); if(!el||el.dataset.wired) return;
+    el.dataset.wired="1";
+    const wrap=document.createElement("span");
+    wrap.className="wrap";
+    el.parentNode.insertBefore(wrap,el);
+    wrap.appendChild(el);
+    const btn=document.createElement("button");
+    btn.className="fclear"; btn.type="button"; btn.textContent="✕";
+    btn.title="Clear this filter";
+    btn.onclick=()=>{ el.value=""; wrap.classList.remove("filled"); onChange(); el.focus(); };
+    wrap.appendChild(btn);
+    const sync=()=>wrap.classList.toggle("filled",!!el.value.trim());
+    el.addEventListener("input",sync);
+    el.addEventListener("change",sync);
+    el._syncClear=sync;
+    sync();
+  });
+}
+function syncFieldClears(ids){
+  ids.forEach(id=>{ const el=$("#"+id); if(el&&el._syncClear) el._syncClear(); });
+}
 
 function fillList(id,values){
   const el=$("#"+id); if(!el) return;
@@ -1331,7 +1448,7 @@ async function loadDuplicates(){
     fillList("dPlayerList",body.facets.player_name||[]);
     fillList("dParallelList",body.facets.parallel_name||[]);
 
-    DUPES=body.rows||[]; DUP_ERR="";
+    DUPES=body.rows||[]; DUP_ERR=""; syncFieldClears(DUP_IDS);
     DUP_TOTAL=body.total||0; DUP_MATCHED=body.matched||0;
     $("#dupSrc").textContent=`question 36730 · ${fmt(body.total)} rows`;
     renderDupTotals(body);
@@ -1366,8 +1483,8 @@ function renderDup(){
     const deep=r.total_duplicates>=10;
     return `<tr>
       <td class="thumb">${thumb(r.image,r.url)}</td>
-      <td>${esc(r.year||"—")}</td>
-      <td class="wrapcell">${esc(r.set_name||"—")}</td>
+      <td class="catname">${icon(r.sport)} ${esc(r.sport||"—")}</td>
+      <td class="wrapcell">${esc([r.year,r.set_name].filter(Boolean).join(" ")||"—")}</td>
       <td>${esc(r.insert||"—")}</td>
       <td class="wrapcell">${cardLink(r.url,r.player_name||"—")}</td>
       <td>${esc(r.set_number||"—")}</td>
@@ -1383,7 +1500,7 @@ function renderDup(){
   const copies=rows.reduce((s,r)=>s+r.total_duplicates,0);
   const expo=rows.reduce((s,r)=>s+r.total_duplicates*r.avg_estimated_value,0);
   $("#dupTbl tfoot").innerHTML=rows.length?`<tr>
-    <td></td><td>TOTAL</td><td>${fmt(rows.length)} cards</td><td></td><td></td><td></td><td></td><td></td><td></td>
+    <td>TOTAL</td><td></td><td>${fmt(rows.length)} cards</td><td></td><td></td><td></td><td></td><td></td><td></td>
     <td>${fmt(copies)}</td><td></td><td>$${fmt(Math.round(expo))}</td><td></td></tr>`:"";
   $("#dupTabCount").textContent = (DUP_TOTAL&&DUP_MATCHED!==DUP_TOTAL)
     ? `${fmt(DUP_MATCHED)} / ${fmt(DUP_TOTAL)}`
@@ -1396,11 +1513,12 @@ const DUP_FIELDS={sport:"dSport",set:"dSet",player:"dPlayer",parallel:"dParallel
 function syncDupLink(){
   const a=$("#dMetabase"); if(a) a.href=metabaseUrl(36730,DUP_FIELDS);
 }
+const DUP_IDS=["dSport","dSet","dPlayer","dParallel","dTag","dCompany","dGrade","dMin","dMax"];
+wireFieldClears(DUP_IDS,()=>{ syncDupLink(); loadDuplicates(); });
 $("#dApply").onclick=()=>{ syncDupLink(); loadDuplicates(); };
 $("#dClear").onclick=()=>{
-  ["dSport","dSet","dPlayer","dParallel","dTag","dCompany","dGrade","dMin","dMax"]
-    .forEach(id=>{ if($("#"+id)) $("#"+id).value=""; });
-  loadDuplicates();
+  DUP_IDS.forEach(id=>{ if($("#"+id)) $("#"+id).value=""; });
+  syncFieldClears(DUP_IDS); syncDupLink(); loadDuplicates();
 };
 ["dSport","dSet","dPlayer","dParallel","dTag","dCompany","dGrade","dMin","dMax"].forEach(id=>{
   const el=$("#"+id); if(!el) return;
@@ -1444,7 +1562,7 @@ async function loadWarehouse(){
     fillList("wPlayerList",body.facets.player_name||[]);
     fillList("wParallelList",body.facets.parallel_name||[]);
 
-    WHOUSE=body.rows||[]; WH_ERR="";
+    WHOUSE=body.rows||[]; WH_ERR=""; syncFieldClears(Object.values(WH_FIELDS));
     $("#whSrc").textContent=`question 4131 · ${fmt(body.total)} cards`;
     renderWarehouse(body);
   }catch(e){
@@ -1496,24 +1614,17 @@ function renderWarehouse(body){
   $("#whTabCount").textContent = (body&&matched!==total)
     ? `${fmt(matched)} / ${fmt(total)}`
     : fmt(total);
-  const pasted=Object.values(WH_FIELDS).reduce((n,id)=>{
-    const v=$("#"+id)?$("#"+id).value.trim():""; if(!v) return n;
-    const parts=v.split(/[,\n\r\t;]+/).filter(Boolean).length;
-    return n+(parts>1?parts:0);
-  },0);
   syncWhLink();
-  $("#wHint").textContent=pasted
-    ? `${pasted} values pasted across the filters.`
-    : "Any field takes a pasted list — commas or one per line.";
 }
 
+wireFieldClears(Object.values(WH_FIELDS),()=>{ syncWhLink(); loadWarehouse(); });
 function syncWhLink(){
   const a=$("#wMetabase"); if(a) a.href=metabaseUrl(4131,WH_FIELDS);
 }
 $("#wApply").onclick=()=>{ syncWhLink(); loadWarehouse(); };
 $("#wClear").onclick=()=>{
   Object.values(WH_FIELDS).forEach(id=>{ if($("#"+id)) $("#"+id).value=""; });
-  loadWarehouse();
+  syncFieldClears(Object.values(WH_FIELDS)); syncWhLink(); loadWarehouse();
 };
 Object.values(WH_FIELDS).forEach(id=>{
   const el=$("#"+id); if(!el) return;

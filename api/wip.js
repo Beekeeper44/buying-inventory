@@ -58,15 +58,20 @@ function shape(row) {
   return out;
 }
 
-/** One entry per PO, with its sport split and where its cards are sitting. */
-function groupByPo(rows) {
+/**
+ * One entry per PO *per STATUS* — the question's STATUS column is taken at face
+ * value. A PO that is part inbound and part WIP appears under both, with the
+ * cards that are actually in each. Nothing is inferred.
+ */
+function groupByPoStatus(rows) {
   const by = {};
   rows.forEach(r => {
     if (!r.po_raw) return;
-    const key = 'PO-' + r.po_raw;
+    const status = r.status || 'Other';
+    const key = r.po_raw + '|' + status;
     if (!by[key]) {
-      by[key] = { po: key, po_raw: r.po_raw, cards: 0, vaulted: 0, inbound: 0,
-                  sports: {}, buckets: {}, statuses: {}, pending: {} };
+      by[key] = { po: 'PO-' + r.po_raw, po_raw: r.po_raw, status,
+                  cards: 0, vaulted: 0, inbound: 0, sports: {}, buckets: {}, pending: {} };
       PENDING.forEach(p => by[key].pending[p] = 0);
     }
     const g = by[key];
@@ -75,34 +80,24 @@ function groupByPo(rows) {
     g.inbound += r.inbound;
     if (r.sport)  g.sports[r.sport]   = (g.sports[r.sport]   || 0) + r.cards;
     if (r.bucket) g.buckets[r.bucket] = (g.buckets[r.bucket] || 0) + r.cards;
-    if (r.status) g.statuses[r.status] = (g.statuses[r.status] || 0) + r.cards;
     PENDING.forEach(p => g.pending[p] += r[p]);
   });
 
-  return Object.values(by).map(g => {
-    const st = k => g.statuses[k] || 0;
-    const fg      = st('FG');
-    const wip     = st('WIP');
-    const inbound = st('Inbound');
-    const other   = g.cards - fg - wip - inbound;
-    const pendingTotal = PENDING.reduce((s, p) => s + g.pending[p], 0);
-
-    // FG once nothing is still inbound or in process
-    const stage = (wip + inbound + pendingTotal) === 0 && fg > 0 ? 'FG'
-                : wip > 0 || pendingTotal > 0                    ? 'WIP'
-                : inbound > 0                                     ? 'Inbound'
-                : fg > 0                                          ? 'FG' : 'Other';
-
-    return {
-      po: g.po, po_raw: g.po_raw, stage,
-      cards: g.cards, vaulted: g.vaulted, fg, wip, inbound, other,
-      pending: g.pending, pending_total: pendingTotal,
-      sports: Object.entries(g.sports).map(([sport, cards]) => ({ sport, cards }))
-                    .sort((a, b) => b.cards - a.cards),
-      buckets: Object.entries(g.buckets).map(([tier, cards]) => ({ tier, cards }))
-                    .sort((a, b) => b.cards - a.cards)
-    };
-  }).sort((a, b) => b.cards - a.cards);
+  return Object.values(by).map(g => ({
+    po: g.po, po_raw: g.po_raw,
+    status: g.status,
+    stage: /^fg$/i.test(g.status) ? 'FG'
+         : /^wip$/i.test(g.status) ? 'WIP'
+         : /^inbound$/i.test(g.status) ? 'Inbound'
+         : g.status,
+    cards: g.cards, vaulted: g.vaulted, inbound_cards: g.inbound,
+    pending: g.pending,
+    pending_total: PENDING.reduce((s, p) => s + g.pending[p], 0),
+    sports: Object.entries(g.sports).map(([sport, cards]) => ({ sport, cards }))
+                  .sort((a, b) => b.cards - a.cards),
+    buckets: Object.entries(g.buckets).map(([tier, cards]) => ({ tier, cards }))
+                  .sort((a, b) => b.cards - a.cards)
+  })).sort((a, b) => b.cards - a.cards);
 }
 
 async function load() {
@@ -120,7 +115,7 @@ async function load() {
 
   cache.raw = body.slice(0, 3);
   cache.rows = body.map(shape);
-  cache.groups = groupByPo(cache.rows);
+  cache.groups = groupByPoStatus(cache.rows);
   cache.at = Date.now();
   return cache;
 }
@@ -151,15 +146,25 @@ module.exports = async (req, res) => {
     let results = c.groups;
 
     if (q.po)    results = results.filter(r => r.po_raw === digits(q.po));
-    if (q.stage) results = results.filter(r => r.stage.toLowerCase() === String(q.stage).toLowerCase());
+    if (q.stage)  results = results.filter(r => r.stage.toLowerCase() === String(q.stage).toLowerCase());
+    if (q.status) results = results.filter(r => r.status.toLowerCase() === String(q.status).toLowerCase());
     if (q.sport) results = results.filter(r => r.sports.some(s =>
                     s.sport.toLowerCase().includes(String(q.sport).toLowerCase())));
 
-    const tally = k => results.filter(r => r.stage === k).length;
+    const byStatus = {};
+    results.forEach(r => {
+      const k = r.stage;
+      if (!byStatus[k]) byStatus[k] = { pos: new Set(), cards: 0 };
+      byStatus[k].pos.add(r.po_raw);
+      byStatus[k].cards += r.cards;
+    });
+    const counts = {};
+    Object.entries(byStatus).forEach(([k, v]) => counts[k] = { pos: v.pos.size, cards: v.cards });
 
     return res.status(200).json({
       ok: true, generated: new Date(c.at).toISOString(),
-      counts: { inbound: tally('Inbound'), wip: tally('WIP'), fg: tally('FG'), other: tally('Other') },
+      statuses: Object.keys(counts).sort(),
+      counts,
       cards: results.reduce((s, r) => s + r.cards, 0),
       count: results.length, rows: c.rows.length, results
     });
