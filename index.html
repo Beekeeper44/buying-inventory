@@ -1236,7 +1236,9 @@ function renderFlow(){
   $("#flowCat").innerHTML=`<option value="all">All categories</option>`+cats.map(c=>`<option${c===keep?" selected":""}>${esc(c)}</option>`).join("");
 
   const rows=flowFiltered(), today=new Date();
-  const inb=rows.filter(r=>r.stage==="Inbound"), wip=rows.filter(r=>r.stage==="WIP");
+  const byPoDesc=(a,b)=>num(String(b.po_number).replace(/\D/g,""))-num(String(a.po_number).replace(/\D/g,""));
+  const inb=rows.filter(r=>r.stage==="Inbound").sort(byPoDesc),
+        wip=rows.filter(r=>r.stage==="WIP").sort(byPoDesc);
   const sum=(a,k)=>a.reduce((s,r)=>s+num(r[k]),0);
   const late=inb.filter(r=>{const e=D(r.eta);return e&&e<today;});
   const ages=wip.map(r=>daysBetween(D(r.received_date),today)).filter(v=>v!==null);
@@ -1256,7 +1258,7 @@ function renderFlow(){
     const openAge=daysBetween(D(r.ship_date),today);
     const dl=d!==null?(d<0?`${Math.abs(d)}d late`:`${d}d`):openAge!==null?`${openAge}d`:"—";
     return `<tr data-po="${esc(r.po_number)}">
-      <td class="pk"><span class="polink" title="Card breakdown for this PO">${esc(r.po_number||"—")}</span> ${flagCell(r)}</td>
+      <td class="pk" data-sort="${num(String(r.po_number).replace(/\D/g,""))}"><span class="polink" title="Card breakdown for this PO">${esc(r.po_number||"—")}</span> ${flagCell(r)}</td>
       <td class="wrapcell">${sheetCell(r)}</td>
       <td>${esc(r.vendor||"—")}</td>
       <td class="strong">${r.cards?fmt(r.cards):"—"}</td>
@@ -1270,7 +1272,7 @@ function renderFlow(){
   $("#wipTbl tbody").innerHTML=wip.length?wip.map(r=>{
     const a=daysBetween(D(r.received_date),today);
     return `<tr data-po="${esc(r.po_number)}">
-      <td class="pk"><span class="polink" title="Card breakdown for this PO">${esc(r.po_number||"—")}</span> ${flagCell(r)}</td>
+      <td class="pk" data-sort="${num(String(r.po_number).replace(/\D/g,""))}"><span class="polink" title="Card breakdown for this PO">${esc(r.po_number||"—")}</span> ${flagCell(r)}</td>
       <td class="wrapcell">${sheetCell(r)}</td>
       <td>${esc(r.vendor||"—")}</td>
       <td class="strong">${r.cards?fmt(r.cards):"—"}</td>
@@ -1283,11 +1285,11 @@ function renderFlow(){
   $$(".read-sheet").forEach(b=>b.onclick=e=>{ e.stopPropagation(); readPoSheet(b.dataset.po); });
   const sportTotals={};
   rows.forEach(r=>(r._sports||[]).forEach(x=>sportTotals[x.sport]=(sportTotals[x.sport]||0)+x.cards));
-  const fg=rows.filter(r=>r.stage==="FG");
+  const fg=rows.filter(r=>r.stage==="FG").sort(byPoDesc);
   $("#fgCount").textContent=`· ${fg.length}`;
   $("#fgTbl tbody").innerHTML=fg.length?fg.map(r=>`
     <tr data-po="${esc(r.po_number)}">
-      <td class="pk"><span class="polink" title="Card breakdown for this PO">${esc(r.po_number||"—")}</span> ${flagCell(r)}</td>
+      <td class="pk" data-sort="${num(String(r.po_number).replace(/\D/g,""))}"><span class="polink" title="Card breakdown for this PO">${esc(r.po_number||"—")}</span> ${flagCell(r)}</td>
       <td class="wrapcell">${sheetCell(r)}</td>
       <td>${esc(r.vendor||"—")}</td>
       <td class="strong">${r.cards?fmt(r.cards):"—"}</td>
@@ -1318,6 +1320,14 @@ function renderFlow(){
 
   $$("#inTbl tbody tr[data-po], #wipTbl tbody tr[data-po], #fgTbl tbody tr[data-po]")
     .forEach(tr=>tr.onclick=()=>openPo(tr.dataset.po));
+
+  // mark PO as the active sort unless the user has picked another column
+  ["inTbl","wipTbl","fgTbl"].forEach(id=>{
+    const t=$("#"+id); if(!t) return;
+    if(t.dataset.sortCol!==undefined) return;
+    const th=t.tHead&&t.tHead.rows[0]&&t.tHead.rows[0].cells[0];
+    if(th&&!/[▲▼]/.test(th.innerHTML)) th.innerHTML+=` <span class="ar">▼</span>`;
+  });
 
   $("#pillIn").textContent=inb.length;
   $("#pillWip").textContent=wip.length;
@@ -1476,7 +1486,16 @@ document.addEventListener("click",e=>{
   const idx=[...th.parentNode.children].indexOf(th);
   const label=th.textContent.replace(/[▲▼]/g,"").trim();
   if(!label) return;                        // image column has no header text
-  const dir=(table.dataset.sortCol==String(idx)&&table.dataset.sortDir==="1")?-1:1;
+  const first=table.dataset.sortCol!=String(idx);
+  // numeric columns open descending — biggest PO, most cards, highest cost first
+  const numeric=[...table.tBodies[0].rows].slice(0,3).some(r=>{
+    const c=r.cells[idx]; if(!c) return false;
+    const raw=c.getAttribute("data-sort");
+    const t=(raw!==null?raw:c.textContent).trim();
+    return t&&t!=="—"&&/^[-$\d\s.,/]+(d|%|days?)?$/i.test(t);
+  });
+  const dir=first ? (numeric?-1:1)
+                  : (table.dataset.sortDir==="1"?-1:1);
   table.dataset.sortCol=idx; table.dataset.sortDir=String(dir);
   [...th.parentNode.children].forEach(h=>{ h.innerHTML=h.innerHTML.replace(/\s*<span class="ar">[▲▼]<\/span>/,""); });
   th.innerHTML+=` <span class="ar">${dir===1?"▲":"▼"}</span>`;
