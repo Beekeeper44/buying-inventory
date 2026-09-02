@@ -158,7 +158,12 @@ a.openlink:hover{border-color:var(--green)}
 .filters textarea:focus{height:88px}
 .filters .fbtns{display:flex;gap:8px;grid-column:1/-1}
 #dupTbl td.wrapcell{white-space:normal;max-width:340px;font-family:var(--display);font-weight:600}
-#inTbl td.wrapcell,#wipTbl td.wrapcell{white-space:normal;max-width:300px}
+#inTbl td.wrapcell,#wipTbl td.wrapcell,#fgTbl td.wrapcell{white-space:normal;max-width:300px}
+#inTbl tbody tr[data-po],#wipTbl tbody tr[data-po],#fgTbl tbody tr[data-po]{cursor:pointer}
+.polink{color:var(--green);border-bottom:1px solid transparent}
+tr:hover .polink{border-bottom-color:var(--green)}
+#poBody table th{cursor:default;font-size:11px}
+#poBody table td{padding:9px 12px}
 #inTbl a,#wipTbl a{color:var(--green);text-decoration:none;border-bottom:1px solid var(--green-dim)}
 #inTbl a:hover,#wipTbl a:hover{border-bottom-color:var(--green)}
 .chip.s3{margin:2px 0}
@@ -367,10 +372,10 @@ $50,$25-$49,2634,176,15,193"></textarea>
 </div></div>
 
 <div class="card" id="secInbound" style="margin-bottom:22px">
-  <div class="card-h"><span>INBOUND <span id="inCount" style="color:var(--muted)"></span></span><span class="hint">PURCHASE ORDERS IN TRANSIT</span></div>
+  <div class="card-h"><span>INBOUND <span id="inCount" style="color:var(--muted)"></span></span><span class="hint">PURCHASE ORDERS · CLICK A PO FOR ITS CARDS</span></div>
   <div style="overflow-x:auto">
     <table id="inTbl">
-      <thead><tr><th>PO</th><th>SHEET</th><th>VENDOR</th><th>CARDS</th><th>COST</th><th>PACKAGES</th><th>DAYS OPEN</th><th>SPORT BREAKDOWN</th></tr></thead>
+      <thead><tr><th>PO</th><th>SHEET</th><th>VENDOR</th><th>CARDS</th><th>COST</th><th>PACKAGES</th><th>DAYS OPEN</th></tr></thead>
       <tbody></tbody><tfoot></tfoot>
     </table>
   </div>
@@ -380,7 +385,7 @@ $50,$25-$49,2634,176,15,193"></textarea>
   <div class="card-h"><span>WIP <span id="wipCount" style="color:var(--muted)"></span></span><span class="hint">PURCHASE ORDERS IN HAND</span></div>
   <div style="overflow-x:auto">
     <table id="wipTbl">
-      <thead><tr><th>PO</th><th>SHEET</th><th>VENDOR</th><th>CARDS</th><th>COST</th><th>DATE RCV'D</th><th>PACKAGES</th><th>SPORT BREAKDOWN</th></tr></thead>
+      <thead><tr><th>PO</th><th>SHEET</th><th>VENDOR</th><th>CARDS</th><th>COST</th><th>DATE RCV'D</th><th>PACKAGES</th></tr></thead>
       <tbody></tbody><tfoot></tfoot>
     </table>
   </div>
@@ -389,11 +394,22 @@ $50,$25-$49,2634,176,15,193"></textarea>
 </div>
 
 
+<div class="card hidden" id="secPo">
+  <div class="card-h">
+    <span style="display:flex;align-items:center;gap:14px">
+      <button class="back" id="poBack" title="Back to the list">←</button>
+      <span id="poTitle" style="font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:0"></span>
+    </span>
+    <span class="hint" id="poSub"></span>
+  </div>
+  <div class="card-b" id="poBody"></div>
+</div>
+
 <div class="card hidden" id="secFg">
-  <div class="card-h"><span>FINISHED GOODS <span id="fgCount" style="color:var(--muted)"></span></span><span class="hint">RELEASED · NO LONGER WIP</span></div>
+  <div class="card-h"><span>FINISHED GOODS <span id="fgCount" style="color:var(--muted)"></span></span><span class="hint">PURCHASE ORDERS · CLICK A PO FOR ITS CARDS</span></div>
   <div style="overflow-x:auto">
     <table id="fgTbl">
-      <thead><tr><th>PO</th><th>SHEET</th><th>VENDOR</th><th>CARDS</th><th>VAULTED</th><th>COST</th><th>DATE RCV'D</th><th>SPORT BREAKDOWN</th></tr></thead>
+      <thead><tr><th>PO</th><th>SHEET</th><th>VENDOR</th><th>CARDS</th><th>VAULTED</th><th>COST</th><th>DATE RCV'D</th></tr></thead>
       <tbody></tbody><tfoot></tfoot>
     </table>
   </div>
@@ -939,6 +955,48 @@ function sheetCell(r){
     ? `<a href="${esc(r.sheet_url)}" target="_blank" rel="noopener">${name}</a>`
     : name;
 }
+function openPo(po){
+  const r=FLOW.find(x=>x.po_number===po); if(!r) return;
+  poOpen=po;
+  $("#poTitle").innerHTML=`${esc(r.po_number)} ${flagCell(r)}`;
+  $("#poSub").textContent=[r.vendor,r.stage_name].filter(Boolean).join(" · ");
+
+  const sports=r._sports||[], tiers=r._tiers||[];
+  const pend=Object.entries(r._pending||{}).filter(([,v])=>num(v)>0)
+                   .sort((a,b)=>b[1]-a[1]);
+  const totalSport=sports.reduce((s,x)=>s+x.cards,0);
+
+  const bar=(list,key,total)=>list.length?`<table style="width:100%">
+      <thead><tr><th style="text-align:left">${key==="sport"?"SPORT":"BUCKET"}</th><th>CARDS</th><th>SHARE</th></tr></thead>
+      <tbody>${list.map(x=>{
+        const n=x.cards, pct=total?(n/total)*100:0;
+        return `<tr><td style="text-align:left">${key==="sport"?icon(x.sport)+" "+esc(x.sport):esc(x.tier)}</td>
+          <td class="strong">${fmt(n)}</td>
+          <td><span style="display:inline-block;width:90px;height:6px;background:#111511;border-radius:3px;vertical-align:middle;margin-right:8px">
+            <i style="display:block;height:100%;width:${pct.toFixed(1)}%;background:var(--green);border-radius:3px"></i></span>${pct.toFixed(1)}%</td></tr>`;
+      }).join("")}</tbody></table>`:`<p class="note">No breakdown for this PO yet.</p>`;
+
+  $("#poBody").innerHTML=`
+    <div class="totals" style="margin:0 0 18px">
+      <div class="tot"><div class="k">CARDS</div><div class="v">${r.cards?fmt(r.cards):"—"}</div><div class="s">${r.sheet_name?esc(r.sheet_name):"no sheet"}</div></div>
+      <div class="tot"><div class="k">COST</div><div class="v gold">$${fmt(r.cost)}</div><div class="s">${r.paid?"paid":"unpaid"}</div></div>
+      <div class="tot"><div class="k">VAULTED</div><div class="v green">${r._vaulted?fmt(r._vaulted):"—"}</div><div class="s">released to the vault</div></div>
+      <div class="tot"><div class="k">PACKAGES</div><div class="v">${r.pkg_total?fmt(r.pkg_received)+" / "+fmt(r.pkg_total):"—"}</div><div class="s">received</div></div>
+      <div class="tot"><div class="k">DATE RCV'D</div><div class="v" style="font-size:19px">${esc(r.received_date||"—")}</div><div class="s">${esc(r.stage)}</div></div>
+      <div class="tot"><div class="k">STATUS MIX</div><div class="v" style="font-size:19px">${Object.entries(r._mix||{}).map(([k,v])=>`${k} ${fmt(v)}`).join(" · ")||"—"}</div><div class="s">cards by status</div></div>
+    </div>
+    <div class="cols">
+      <div class="block"><h3>CARDS BY SPORT</h3><div class="card-b">${bar(sports,"sport",totalSport)}</div></div>
+      <div class="block"><h3>CARDS BY BUCKET</h3><div class="card-b">${bar(tiers,"tier",tiers.reduce((s,x)=>s+x.cards,0))}</div></div>
+    </div>
+    ${pend.length?`<div class="block" style="margin-top:22px"><h3>PENDING</h3><div class="card-b">
+      ${pend.map(([k,v])=>`<span class="chip s2">${esc(k.replace("pending_"," ").trim())} ${fmt(v)}</span>`).join("")}
+    </div></div>`:""}
+    ${r.sheet_url?`<p class="note" style="margin-top:18px"><a href="${esc(r.sheet_url)}" target="_blank" rel="noopener">Open the buying sheet ↗</a></p>`:""}`;
+
+  applySec();
+}
+
 function stageCell(r){
   if(!r.stage_name) return "";
   const k=r.stage_name.toLowerCase();
@@ -1071,20 +1129,26 @@ async function loadWipFromMetabase(){
     if(r.stage==="Duplicates") return;
     const g=byPo[r.po_number]; if(!g) return;
     hit++;
-    // the status holding the most cards decides the section
-    const top=Object.entries(g.mix).sort((a,b)=>b[1]-a[1])[0];
-    if(top) r.stage=top[0];
+    // the biggest of the three real statuses decides the section;
+    // "Other" never claims a PO on its own — the sheet's stage stands
+    const real=Object.entries(g.mix).filter(([k])=>k==="Inbound"||k==="WIP"||k==="FG")
+                                    .sort((a,b)=>b[1]-a[1])[0];
+    if(real) r.stage=real[0];
+    r._other=g.mix.Other||0;
     r._mix=g.mix;
     r.cards=g.cards||r.cards;
     r._vaulted=g.vaulted;
     r._pending=g.pending;
     r._sports=Object.entries(g.sports).map(([sport,cards])=>({sport,cards})).sort((a,b)=>b.cards-a.cards);
     r._tiers=Object.entries(g.buckets).map(([tier,cards])=>({tier,cards})).sort((a,b)=>b.cards-a.cards);
+    if(!real&&r._other) r.stage_name="Other";
     r.stage_name = r.stage==="FG" ? "Released"
                  : r.stage==="Inbound" ? "Awaiting delivery"
                  : (topPending(g.pending)||"In process");
   });
   persistFlow(); renderFlow();
+  const unplaced=FLOW.filter(r=>r.stage!=="Duplicates"&&!["Inbound","WIP","FG"].includes(r.stage)).length;
+  if(unplaced) console.warn(`${unplaced} POs have no Inbound/WIP/FG status`);
   return hit;
 }
 
@@ -1170,31 +1234,29 @@ function renderFlow(){
     const openAge=daysBetween(D(r.ship_date),today);
     const dl=d!==null?(d<0?`${Math.abs(d)}d late`:`${d}d`):openAge!==null?`${openAge}d`:"—";
     return `<tr data-po="${esc(r.po_number)}">
-      <td class="pk">${esc(r.po_number||"—")} ${flagCell(r)}</td>
+      <td class="pk"><span class="polink" title="Card breakdown for this PO">${esc(r.po_number||"—")}</span> ${flagCell(r)}</td>
       <td class="wrapcell">${sheetCell(r)}</td>
       <td>${esc(r.vendor||"—")}</td>
       <td class="strong">${r.cards?fmt(r.cards):"—"}</td>
       <td>$${fmt(r.cost)}</td>
       <td>${pkgCell(r)}</td>
-      <td class="age" style="color:${(d!==null&&d<0)||(d===null&&openAge>10)?"var(--red)":(d!==null&&d<=2)||(d===null&&openAge>5)?"var(--gold)":"var(--text)"}">${dl}</td>
-      <td class="wrapcell">${breakdownCell(r)}</td></tr>`;
-  }).join(""):`<tr><td colspan="8" class="note" style="padding:24px;text-align:left">Nothing inbound matches that filter.</td></tr>`;
-  $("#inTbl tfoot").innerHTML=inb.length?`<tr><td>TOTAL</td><td>${inb.length} POs</td><td></td><td>${fmt(sum(inb,"cards"))}</td><td>$${fmt(sum(inb,"cost"))}</td><td></td><td></td><td></td></tr>`:"";
+      <td class="age" style="color:${(d!==null&&d<0)||(d===null&&openAge>10)?"var(--red)":(d!==null&&d<=2)||(d===null&&openAge>5)?"var(--gold)":"var(--text)"}">${dl}</td></tr>`;
+  }).join(""):`<tr><td colspan="7" class="note" style="padding:24px;text-align:left">Nothing inbound matches that filter.</td></tr>`;
+  $("#inTbl tfoot").innerHTML=inb.length?`<tr><td>TOTAL</td><td>${inb.length} POs</td><td></td><td>${fmt(sum(inb,"cards"))}</td><td>$${fmt(sum(inb,"cost"))}</td><td></td><td></td></tr>`:"";
 
   $("#wipCount").textContent=`· ${wip.length}`;
   $("#wipTbl tbody").innerHTML=wip.length?wip.map(r=>{
     const a=daysBetween(D(r.received_date),today);
     return `<tr data-po="${esc(r.po_number)}">
-      <td class="pk">${esc(r.po_number||"—")} ${flagCell(r)}</td>
+      <td class="pk"><span class="polink" title="Card breakdown for this PO">${esc(r.po_number||"—")}</span> ${flagCell(r)}</td>
       <td class="wrapcell">${sheetCell(r)}</td>
       <td>${esc(r.vendor||"—")}</td>
       <td class="strong">${r.cards?fmt(r.cards):"—"}</td>
       <td>$${fmt(r.cost)}</td>
       <td>${esc(r.received_date||"—")}</td>
-      <td>${pkgCell(r)} ${stageCell(r)} <span class="age" style="color:${a!==null&&a>21?"var(--red)":a!==null&&a>14?"var(--gold)":"var(--green)"}">${a===null?"":"· "+a+"d"}</span></td>
-      <td class="wrapcell">${breakdownCell(r)}</td></tr>`;
-  }).join(""):`<tr><td colspan="8" class="note" style="padding:24px;text-align:left">Nothing in WIP matches that filter.</td></tr>`;
-  $("#wipTbl tfoot").innerHTML=wip.length?`<tr><td>TOTAL</td><td>${wip.length} POs</td><td></td><td>${fmt(sum(wip,"cards"))}</td><td>$${fmt(sum(wip,"cost"))}</td><td></td><td></td><td></td></tr>`:"";
+      <td>${pkgCell(r)} ${stageCell(r)} <span class="age" style="color:${a!==null&&a>21?"var(--red)":a!==null&&a>14?"var(--gold)":"var(--green)"}">${a===null?"":"· "+a+"d"}</span></td></tr>`;
+  }).join(""):`<tr><td colspan="7" class="note" style="padding:24px;text-align:left">Nothing in WIP matches that filter.</td></tr>`;
+  $("#wipTbl tfoot").innerHTML=wip.length?`<tr><td>TOTAL</td><td>${wip.length} POs</td><td></td><td>${fmt(sum(wip,"cards"))}</td><td>$${fmt(sum(wip,"cost"))}</td><td></td><td></td></tr>`:"";
 
   $$(".read-sheet").forEach(b=>b.onclick=e=>{ e.stopPropagation(); readPoSheet(b.dataset.po); });
   const sportTotals={};
@@ -1203,18 +1265,17 @@ function renderFlow(){
   $("#fgCount").textContent=`· ${fg.length}`;
   $("#fgTbl tbody").innerHTML=fg.length?fg.map(r=>`
     <tr data-po="${esc(r.po_number)}">
-      <td class="pk">${esc(r.po_number||"—")} ${flagCell(r)}</td>
+      <td class="pk"><span class="polink" title="Card breakdown for this PO">${esc(r.po_number||"—")}</span> ${flagCell(r)}</td>
       <td class="wrapcell">${sheetCell(r)}</td>
       <td>${esc(r.vendor||"—")}</td>
       <td class="strong">${r.cards?fmt(r.cards):"—"}</td>
       <td class="strong" style="color:var(--green)">${r._vaulted?fmt(r._vaulted):"—"}</td>
       <td>$${fmt(r.cost)}</td>
-      <td>${esc(r.received_date||"—")}</td>
-      <td class="wrapcell">${breakdownCell(r)}</td></tr>`).join("")
-    :`<tr><td colspan="8" class="note" style="padding:24px;text-align:left">Nothing released matches that filter.</td></tr>`;
+      <td>${esc(r.received_date||"—")}</td></tr>`).join("")
+    :`<tr><td colspan="7" class="note" style="padding:24px;text-align:left">Nothing released matches that filter.</td></tr>`;
   $("#fgTbl tfoot").innerHTML=fg.length?`<tr><td>TOTAL</td><td>${fg.length} POs</td><td></td>
     <td>${fmt(sum(fg,"cards"))}</td><td>${fmt(fg.reduce((s,r)=>s+num(r._vaulted),0))}</td>
-    <td>$${fmt(sum(fg,"cost"))}</td><td></td><td></td></tr>`:"";
+    <td>$${fmt(sum(fg,"cost"))}</td><td></td></tr>`:"";
   $("#pillFg").textContent=fg.length;
 
   // sport + bucket options, counted across the POs currently loaded
@@ -1233,22 +1294,30 @@ function renderFlow(){
   opts("flowSport",sportCount,"All sports");
   opts("flowBucket",bucketCount,"All buckets");
 
+  $$("#inTbl tbody tr[data-po], #wipTbl tbody tr[data-po], #fgTbl tbody tr[data-po]")
+    .forEach(tr=>tr.onclick=()=>openPo(tr.dataset.po));
+
   $("#pillIn").textContent=inb.length;
   $("#pillWip").textContent=wip.length;
   $("#flowCount").textContent=FLOW.filter(r=>r.stage!=="Duplicates").length;
   applySec();
 }
-let flowSec="inbound";
+let flowSec="inbound", poOpen=null;
+$("#poBack")&&($("#poBack").onclick=closePo);
 $$(".pill-btn").forEach(b=>b.onclick=()=>{
+  poOpen=null;
   flowSec=b.dataset.sec;
   $$(".pill-btn").forEach(x=>x.classList.toggle("on",x===b));
   applySec();
 });
 function applySec(){
-  $("#secInbound").classList.toggle("hidden",flowSec!=="inbound");
-  $("#secWip").classList.toggle("hidden",flowSec!=="wip");
-  $("#secFg").classList.toggle("hidden",flowSec!=="fg");
+  const detail=!!poOpen;
+  $("#secPo").classList.toggle("hidden",!detail);
+  $("#secInbound").classList.toggle("hidden",detail||flowSec!=="inbound");
+  $("#secWip").classList.toggle("hidden",detail||flowSec!=="wip");
+  $("#secFg").classList.toggle("hidden",detail||flowSec!=="fg");
 }
+function closePo(){ poOpen=null; applySec(); }
 
 let autoRunning=false, autoAbort=false;
 async function autoPullSports(){
@@ -1416,6 +1485,7 @@ document.addEventListener("keydown",e=>{
     el.dispatchEvent(new Event("change",{bubbles:true}));
     return;
   }
+  if(poOpen){ closePo(); return; }
   if($("#lightbox")) $("#lightbox").classList.remove("on");
 });
 

@@ -27,11 +27,12 @@ const digits = s => String(s || '').replace(/\D/g, '');
 
 /**
  * Question 36763 columns:
- *   PO_NUMBER SPORT BUCKET STATUS CARDS VAULTED
+ *   PO_NUMBER SPORT BUCKET STAGE CARDS VAULTED
  *   PENDING_SLABBING PENDING_ASSEMBLY PENDING_RELEASE PENDING_GRADING
  *   PENDING_SCAN PENDING_RESCAN PENDING_DATA_ISSUE INBOUND PENDING_BOXING
  *
- * STATUS is authoritative: FG means finished goods — released, so no longer WIP.
+ * STAGE is authoritative: FG means finished goods — released, so no longer WIP.
+ * (The column was called STATUS earlier; both names are accepted.)
  */
 const PENDING = ['pending_scan', 'pending_grading', 'pending_slabbing', 'pending_assembly',
                  'pending_release', 'pending_rescan', 'pending_data_issue', 'pending_boxing'];
@@ -49,7 +50,7 @@ function shape(row) {
     po_raw: digits(get('ponumber', 'po')),
     sport: String(get('sport') || '').trim(),
     bucket: String(get('bucket') || '').trim(),
-    status: String(get('status') || '').trim(),
+    status: String(get('stage', 'status') || '').trim(),   // the question renamed STATUS to STAGE
     cards: num(get('cards')),
     vaulted: num(get('vaulted')),
     inbound: num(get('inbound'))
