@@ -1,0 +1,1773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buying Inventory · DOI Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Archivo:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#000;--panel:#080a08;--panel-2:#0d100d;--line:#1e241e;--line-soft:#161b16;
+  --green:#7CFF4F;--green-dim:#4e9c33;--gold:#C9A227;--gold-dim:#8a7020;
+  --text:#ffffff;--muted:#ffffff;--red:#ff5c5c;--red-dim:#5a2020;--blue:#5cc8ff;--blue-dim:#1d4459;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;--display:"Archivo",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:14px}
+body{min-height:100vh;padding:22px 26px 46px}
+button{font-family:var(--mono);cursor:pointer}
+::selection{background:var(--green);color:#000}
+
+.top{display:flex;align-items:flex-start;gap:20px}
+.mark{width:104px;height:auto;flex:0 0 104px;margin-top:4px;display:block}
+.titlewrap{flex:1;min-width:0}
+h1{font-family:var(--display);font-weight:800;font-size:44px;line-height:1;margin:2px 0 8px;letter-spacing:-.5px}
+h1 .g{color:var(--green)}
+.sub{color:var(--muted);font-size:13.5px;display:flex;align-items:center;gap:9px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);flex:0 0 8px}
+.meta{color:var(--muted);font-size:13px;white-space:nowrap;padding-top:6px;text-align:right}
+.meta b{color:var(--text);font-weight:500}
+
+.tabs{display:flex;margin-top:26px;border-bottom:1px solid var(--line);align-items:center;justify-content:space-between}
+.tab{background:none;border:0;color:var(--muted);padding:12px 22px;font-size:15px;letter-spacing:2px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab:hover{color:var(--text)}
+.tab.on{color:var(--green);border-bottom-color:var(--green)}
+.tab .count{color:var(--text);margin-left:8px}
+.tab.on .count{color:var(--green)}
+.tabtools{display:flex;gap:8px;padding-bottom:8px}
+
+.card{border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.card-h{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);letter-spacing:2px;font-size:13px;flex-wrap:wrap}
+.card-h .hint{color:var(--muted);letter-spacing:1.5px;font-size:12px}
+.card-b{padding:18px 16px}
+
+input,select,textarea{background:#000;border:1px solid var(--line);border-radius:7px;color:var(--text);font-family:var(--mono);font-size:13px;padding:10px 13px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--green-dim)}
+input::placeholder,textarea::placeholder{color:#ffffff;opacity:.45}
+textarea{width:100%;min-height:190px;font-size:12.5px;line-height:1.6;resize:vertical}
+.btn{background:var(--green);color:#04140a;border:0;border-radius:7px;padding:10px 16px;font-size:12.5px;font-weight:700;letter-spacing:1.5px}
+.btn:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line);font-weight:400}
+.btn.ghost:hover{border-color:var(--muted)}
+.note{color:var(--muted);font-size:12.5px;line-height:1.7}
+.hidden{display:none!important}
+
+/* search bar */
+.searchbar{display:flex;gap:10px;align-items:center;margin:22px 0 18px;flex-wrap:wrap}
+.searchbar input{flex:1;min-width:240px;font-size:15px;padding:14px 16px;border-color:var(--green-dim)}
+.searchbar input:focus{box-shadow:0 0 0 1px var(--green),0 0 18px rgba(124,255,79,.12)}
+
+/* totals */
+.totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:22px}
+.tot{background:var(--panel-2);padding:15px 16px}
+.tot .k{color:var(--muted);font-size:11.5px;letter-spacing:1.8px;margin-bottom:8px}
+.tot .v{font-family:var(--display);font-weight:700;font-size:26px;line-height:1}
+.tot .v.green{color:var(--green)}.tot .v.gold{color:var(--gold)}.tot .v.red{color:var(--red)}
+.tot .s{color:var(--muted);font-size:11.5px;margin-top:7px}
+
+#tbl th{cursor:default}
+#lowTbl th{cursor:default}
+#lowTbl th:hover{color:var(--muted)}
+#lowTbl tbody tr{cursor:pointer}
+.tot.click{cursor:pointer;transition:background .15s}
+.tot.click:hover{background:#12160f}
+.tot.click .k:after{content:" ▸";color:var(--green)}
+#tbl th:hover{color:var(--muted)}
+
+/* category table */
+#catTbl td.catname{font-family:var(--display);font-weight:700;font-size:16px;display:flex;align-items:center;gap:9px}
+#catTbl td.strong{font-family:var(--display);font-weight:700;font-size:16px}
+#catTbl tbody tr{cursor:pointer}
+
+/* detail */
+.crumb{display:flex;align-items:center;gap:14px;margin:22px 0 18px}
+.back{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--text);font-size:17px;line-height:1;flex:0 0 40px}
+.back:hover{border-color:var(--green);color:var(--green)}
+.crumb h2{font-family:var(--display);font-weight:800;font-size:30px;margin:0;display:flex;align-items:center;gap:12px}
+.crumb .q{color:var(--muted);font-size:12.5px;letter-spacing:1.5px}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:right;color:var(--muted);font-weight:500;letter-spacing:1.5px;font-size:11.5px;padding:12px 16px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+th:first-child,th:nth-child(2){text-align:left}
+th:hover{color:var(--text)}
+th .ar{color:var(--green)}
+td{padding:13px 16px;border-bottom:1px solid var(--line-soft);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+td:first-child,td:nth-child(2){text-align:left}
+tbody tr:hover{background:#0e120e}
+tfoot td{border-top:1px solid var(--line);border-bottom:0;color:var(--text);font-weight:700;background:var(--panel-2)}
+.pk{font-family:var(--display);font-weight:700;font-size:15px}
+.doi-cell{font-family:var(--display);font-weight:700;font-size:15px;border-radius:5px;padding:5px 10px;display:inline-block;min-width:56px;text-align:center}
+.d-crit{background:rgba(255,92,92,.22);color:#ff8a8a;box-shadow:inset 0 0 0 1px var(--red-dim)}
+.d-low{background:rgba(201,162,39,.18);color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold-dim)}
+.d-ok{background:rgba(124,255,79,.12);color:var(--green);box-shadow:inset 0 0 0 1px var(--green-dim)}
+.d-over{background:rgba(92,200,255,.14);color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue-dim)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:11.5px;letter-spacing:1px;align-items:center}
+.legend span{display:flex;align-items:center;gap:7px}
+.sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+.orline{display:flex;align-items:center;gap:14px;color:var(--muted);letter-spacing:2px;font-size:12px}
+.orline:before,.orline:after{content:"";height:1px;background:var(--line);flex:1}
+.pills{display:flex;gap:10px;margin:22px 0 0;flex-wrap:wrap}
+.pill-btn{display:inline-flex;align-items:center;gap:10px;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:11px 20px;font-size:13px;letter-spacing:2px}
+.pill-btn:hover{border-color:var(--muted);color:var(--text)}
+.pill-btn .pd{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.pill-btn b{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:0;color:var(--muted)}
+.pill-btn.on{border-color:var(--green);color:var(--green);background:rgba(124,255,79,.07)}
+.pill-btn.on .pd{background:var(--green);box-shadow:0 0 8px var(--green)}
+.pill-btn.on b{color:var(--text)}
+#sheetResult table{font-size:12.5px}
+#sheetResult td,#sheetResult th{padding:8px 12px}
+.sheetrow{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.sheetrow label{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:11.5px;letter-spacing:1.5px}
+.sheetrow label:first-child{flex:1;min-width:280px}
+.sheetrow input{color:var(--text)}
+.chip{display:inline-block;border:1px solid var(--line);border-radius:5px;padding:4px 10px;font-size:11.5px;letter-spacing:1.2px;color:var(--muted);margin:2px 4px 2px 0}
+.chip.s1{color:var(--blue);border-color:var(--blue-dim)}
+.chip.s2{color:var(--gold);border-color:var(--gold-dim)}
+.chip.s3{color:var(--green);border-color:var(--green-dim)}
+.chip.bad{color:var(--red);border-color:var(--red-dim)}
+.age{font-family:var(--display);font-weight:700}
+#inTbl th,#wipTbl th,#dupTbl th{cursor:default}
+#dupTbl td.wrapcell{max-width:260px}
+td.thumb{padding:6px 10px;width:52px}
+img.slab{width:38px;height:52px;object-fit:cover;border-radius:4px;border:1px solid var(--line);background:#111;cursor:zoom-in;display:block}
+img.slab:hover{border-color:var(--green)}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:80;cursor:zoom-out;padding:40px}
+.lightbox.on{display:flex}
+.lightbox img{max-width:min(560px,90vw);max-height:90vh;border-radius:10px;border:1px solid var(--line)}
+#whTbl th{cursor:default}
+#whTbl th:hover{color:var(--muted)}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:22px 0 18px;align-items:end}
+.filters label{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:11px;letter-spacing:1.5px}
+.filters input,.filters select,.filters textarea{width:100%}
+.filters textarea{min-height:38px;height:38px;resize:vertical;padding:10px 13px;font-size:13px;line-height:1.3}
+.filters textarea:focus{height:88px}
+.filters .fbtns{display:flex;gap:8px;grid-column:1/-1}
+#dupTbl td.wrapcell{white-space:normal;max-width:340px;font-family:var(--display);font-weight:600}
+#inTbl td.wrapcell,#wipTbl td.wrapcell{white-space:normal;max-width:300px}
+#inTbl a,#wipTbl a{color:var(--green);text-decoration:none;border-bottom:1px solid var(--green-dim)}
+#inTbl a:hover,#wipTbl a:hover{border-bottom-color:var(--green)}
+.chip.s3{margin:2px 0}
+#inTbl th:hover,#wipTbl th:hover,#dupTbl th:hover{color:var(--muted)}
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(18px);background:var(--green);color:#04140a;padding:12px 22px;border-radius:8px;font-size:13px;letter-spacing:1px;opacity:0;pointer-events:none;transition:.18s;z-index:60}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--red);color:#fff}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <img class="mark" alt="Arena Club" src="data:image/png;base64,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">
+  <div class="titlewrap">
+    <h1>Buying <span class="g">Inventory</span></h1>
+    <div class="sub"><span class="dot"></span><span>Days of inventory by category and pack band · search a category, open its table</span></div>
+  </div>
+  <div class="meta">categories <b id="catCount">0</b> · rows <b id="rowCount">0</b> · <span id="src">order list · Sep 1</span><br><b id="asof"></b></div>
+</div>
+
+<div class="tabs">
+  <div style="display:flex">
+    <button class="tab on" data-page="doi">DOI DASHBOARD</button>
+    <button class="tab" data-page="flow">INBOUND &amp; WIP <span class="count" id="flowCount"></span></button>
+    <button class="tab" data-page="dup">DUPLICATES <span class="count" id="dupTabCount"></span></button>
+    <button class="tab" data-page="wh">WAREHOUSE <span class="count" id="whTabCount"></span></button>
+  </div>
+  <div class="tabtools">
+    <button class="btn ghost" id="toggleData">LOAD DATA</button>
+    <button class="btn ghost" id="toggleSheet">GOOGLE SHEET</button>
+    <button class="btn ghost" id="demoAll" title="Reload the bundled dataset for both tabs">RELOAD DATA</button>
+  </div>
+</div>
+
+<div class="card hidden" id="sheetPanel" style="margin-top:22px">
+  <div class="card-h"><span>GOOGLE SHEET CONNECTION</span><span class="hint">ONE SPREADSHEET · MANY TABS</span></div>
+  <div class="card-b">
+    <p class="note" style="margin-top:0">Paste the spreadsheet URL and list the tabs to pull. Each tab is read separately and sorted by what its columns look like. With <b>Dashboard, Order List</b> it wires itself up: the Dashboard drives the inbound/WIP split and package progress, the Order List fills in cost, and completed POs drop out. Use this to refresh from the live sheet — the data currently loaded is a snapshot. Sport counts don't come from here; use PULL SPORTS on the tables below.</p>
+    <div class="sheetrow">
+      <label style="flex:1;min-width:280px">Spreadsheet URL or ID<input id="sheetId" placeholder="https://docs.google.com/spreadsheets/d/…" value="https://docs.google.com/spreadsheets/d/1bg9BZufjr5cXDlKLuRkzOD0KgZbwqzWE0U8Sfwz502U/edit"></label>
+      <button class="btn" id="connectSheet">CONNECT ALL TABS</button>
+      <button class="btn ghost" id="closeSheet">CLOSE</button>
+    </div>
+    <label style="display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:11.5px;letter-spacing:1.5px;margin-top:14px">Tab names — comma or line separated
+      <textarea id="tabList" spellcheck="false" style="min-height:70px">Dashboard, Order List</textarea>
+    </label>
+    <div id="sheetResult" style="margin-top:14px"></div>
+    <p class="note" id="sheetStatus"></p>
+    <details style="margin-top:6px">
+      <summary class="note" style="cursor:pointer">Paste a tab's rows instead</summary>
+      <div style="display:flex;gap:8px;align-items:center;margin:12px 0;flex-wrap:wrap">
+        <span class="note">These rows are:</span>
+        <select id="pasteStage" style="width:auto"><option value="Inbound">Inbound — in transit</option><option value="WIP">WIP — in hand</option><option value="Duplicates">Duplicates</option></select>
+        <button class="btn ghost" id="loadFlow">LOAD ROWS</button>
+        <button class="btn ghost" id="appendFlow">ADD TO EXISTING</button>
+        <button class="btn ghost" id="demoFlow">RESET TO DEMO</button>
+      </div>
+      <textarea id="flowIn" spellcheck="false" placeholder="po_number,vendor,category,cards,cost,ship_date,eta,carrier,tracking,owner,notes
+PO-24118,Cardboard Kings,Baseball,420,12400,2026-08-24,2026-09-02,UPS,1Z999AA10123456784,Alan,two boxes"></textarea>
+    </details>
+    <p class="note" style="margin-bottom:0">Tabs are matched by their columns. <b>Dashboard</b> (PO #, Vendor, Total Cards, pkgs, the checkbox pipeline) sets each PO's stage. <b>Order List</b> (PO, Cost, Track, Date Rcv'd) fills in cost. A <b>category tab</b> (pack, lower_band, current_inventory, cards_kept, doi, daily_output) loads onto the DOI dashboard, with the tab name as the category.</p>
+  </div>
+</div>
+
+<div id="page-doi">
+
+<div class="card hidden" id="dataPanel" style="margin-top:22px">
+  <div class="card-h"><span>LOAD DATA</span><span class="hint">CSV WITH HEADER ROW, OR JSON ARRAY</span></div>
+  <div class="card-b">
+    <p class="note" style="margin-top:0">Paste one Metabase question's results at a time. Include a <code>category</code> column to load several at once, or pick the category below and paste just the pack rows. Headers match loosely — <code>CURRENT_INVENTORY</code>, <code>current inventory</code> and <code>inventory</code> all land in the same field. DOI is used as given, or computed as inventory ÷ daily output when the column is missing.</p>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+      <span class="note">Paste into category:</span>
+      <input id="pasteCat" placeholder="e.g. Baseball" style="width:200px">
+      <span class="note">(ignored if your data has a category column)</span>
+    </div>
+    <textarea id="dataIn" spellcheck="false" placeholder="PACK,LOWER_BAND,CURRENT_INVENTORY,CARDS_KEPT,DOI,DAILY_OUTPUT
+$25,$10-$24,1417,188,8,206
+$50,$25-$49,2634,176,15,193"></textarea>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      <button class="btn" id="loadData">LOAD DATA</button>
+      <button class="btn ghost" id="appendData">ADD TO EXISTING</button>
+      <button class="btn ghost" id="demoData">RESET TO DEMO</button>
+      <button class="btn ghost" id="closeData">CLOSE</button>
+    </div>
+    <p class="note" id="dataStatus"></p>
+  </div>
+</div>
+
+<!-- ============ OVERVIEW ============ -->
+<section id="overview">
+  <div class="searchbar">
+    <input id="catSearch" placeholder="Search category — baseball, pokemon, one piece…" autocomplete="off" spellcheck="false">
+    <button class="btn ghost" id="exportCats">EXPORT CSV</button>
+  </div>
+  <div class="totals" id="totals"></div>
+
+  <div class="card hidden" id="lowCard" style="margin-bottom:22px">
+    <div class="card-h">
+      <span id="lowTitle">BANDS UNDER 10 DAYS</span>
+      <span style="display:flex;gap:10px;align-items:center">
+        <span class="hint">CLICK A ROW TO OPEN ITS CATEGORY</span>
+        <button class="btn ghost" id="lowClose">CLOSE ✕</button>
+      </span>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="lowTbl">
+        <thead><tr>
+          <th>CATEGORY</th><th>PACK</th><th>LOWER BAND</th>
+          <th>CURRENT INVENTORY</th><th>CARDS KEPT</th><th>DOI</th><th>DAILY OUTPUT</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><span>CATEGORIES <span id="catShown" style="color:var(--muted)"></span></span><span class="hint">CLICK A ROW TO OPEN ITS PACK BANDS</span></div>
+    <div style="overflow-x:auto">
+      <table id="catTbl">
+        <thead><tr>
+          <th data-s="name">CATEGORY</th>
+          <th data-s="inv">TOTAL CARDS</th>
+          <th data-s="kept">CARDS KEPT</th>
+          <th data-s="rate">KEEP RATE</th>
+          <th data-s="out">DAILY OUTPUT</th>
+          <th data-s="doi">BLENDED DOI</th>
+          <th data-s="crit">UNDER 10D</th>
+          <th data-s="over">OVER 90D</th>
+          <th data-s="bands">BANDS</th>
+        </tr></thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+  </div>
+  <p class="note hidden" id="noCats">No category matches that search.</p>
+</section>
+
+<!-- ============ DETAIL ============ -->
+<section id="detail" class="hidden">
+  <div class="crumb">
+    <button class="back" id="backBtn" title="Back to all categories">←</button>
+    <h2 id="detTitle"></h2>
+    <span class="q" id="detQ"></span>
+  </div>
+  <div class="totals" id="detTotals"></div>
+  <div class="card">
+    <div class="card-h">
+      <span>PACK BANDS <span id="detCount" style="color:var(--muted)"></span></span>
+      <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input id="packSearch" placeholder="filter pack or band…" style="width:220px">
+        <button class="btn ghost" id="exportCsv">EXPORT CSV</button>
+      </span>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="tbl">
+        <thead><tr>
+          <th data-s="pack_v">PACK</th>
+          <th data-s="lower_band">LOWER BAND</th>
+          <th data-s="current_inventory">CURRENT INVENTORY</th>
+          <th data-s="cards_kept">CARDS KEPT</th>
+          <th data-s="doi">DOI</th>
+          <th data-s="daily_output">DAILY OUTPUT</th>
+        </tr></thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+    <div class="card-b" style="border-top:1px solid var(--line)">
+      <div class="legend">
+        <span><i class="sw" style="background:rgba(255,92,92,.5)"></i>UNDER 10 DAYS — RESTOCK NOW</span>
+        <span><i class="sw" style="background:rgba(201,162,39,.5)"></i>10–20 DAYS — THIN</span>
+        <span><i class="sw" style="background:rgba(124,255,79,.4)"></i>21–90 DAYS — HEALTHY</span>
+        <span><i class="sw" style="background:rgba(92,200,255,.5)"></i>OVER 90 DAYS — OVERSTOCKED</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+</div>
+
+<!-- ============ INBOUND & WIP ============ -->
+<div id="page-flow" class="hidden">
+
+<div class="pills">
+  <button class="pill-btn on" data-sec="inbound"><span class="pd"></span>INBOUND<b id="pillIn">0</b></button>
+  <button class="pill-btn" data-sec="wip"><span class="pd"></span>WIP<b id="pillWip">0</b></button>
+</div>
+
+<div class="searchbar">
+  <input id="flowSearch" placeholder="Search category, vendor, PO, owner…" autocomplete="off" spellcheck="false">
+  <select id="flowCat" style="width:auto;padding:13px"><option value="all">All categories</option></select>
+  <button class="btn ghost" id="exportFlow">EXPORT CSV</button>
+</div>
+
+<div class="totals" id="flowTotals"></div>
+<div class="card" style="margin-bottom:22px"><div class="card-b" style="padding:14px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+  <div id="sportSummary" style="flex:1;display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div>
+  <span id="pullStatus" class="note"></span>
+  <button class="btn ghost" id="readAll">REFRESH SPORTS</button>
+</div></div>
+
+<div class="card" id="secInbound" style="margin-bottom:22px">
+  <div class="card-h"><span>INBOUND <span id="inCount" style="color:var(--muted)"></span></span><span class="hint">PURCHASE ORDERS IN TRANSIT</span></div>
+  <div style="overflow-x:auto">
+    <table id="inTbl">
+      <thead><tr><th>PO</th><th>SHEET</th><th>VENDOR</th><th>CARDS</th><th>COST</th><th>PACKAGES</th><th>DAYS OPEN</th><th>SPORT BREAKDOWN</th></tr></thead>
+      <tbody></tbody><tfoot></tfoot>
+    </table>
+  </div>
+</div>
+
+<div class="card" id="secWip">
+  <div class="card-h"><span>WIP <span id="wipCount" style="color:var(--muted)"></span></span><span class="hint">PURCHASE ORDERS IN HAND</span></div>
+  <div style="overflow-x:auto">
+    <table id="wipTbl">
+      <thead><tr><th>PO</th><th>SHEET</th><th>VENDOR</th><th>CARDS</th><th>COST</th><th>DATE RCV'D</th><th>PACKAGES</th><th>SPORT BREAKDOWN</th></tr></thead>
+      <tbody></tbody><tfoot></tfoot>
+    </table>
+  </div>
+</div>
+
+</div>
+
+
+<!-- ============ DUPLICATES ============ -->
+<div id="page-dup" class="hidden">
+
+  <div class="filters">
+    <label>Sport<input id="dSport" list="dSportList" placeholder="type or pick" autocomplete="off"><datalist id="dSportList"></datalist></label>
+    <label>Set name<input id="dSet" list="dSetList" placeholder="type or pick" autocomplete="off"><datalist id="dSetList"></datalist></label>
+    <label>Player name<input id="dPlayer" list="dPlayerList" placeholder="type or pick" autocomplete="off"><datalist id="dPlayerList"></datalist></label>
+    <label>Parallel name<input id="dParallel" list="dParallelList" placeholder="type or pick" autocomplete="off"><datalist id="dParallelList"></datalist></label>
+    <label>Tag<input id="dTag" list="dTagList" placeholder="type or pick" autocomplete="off"><datalist id="dTagList"></datalist></label>
+    <label>Grading company<input id="dCompany" list="dCompanyList" placeholder="type or pick" autocomplete="off"><datalist id="dCompanyList"></datalist></label>
+    <label>Grade<input id="dGrade" list="dGradeList" placeholder="type or pick" autocomplete="off"><datalist id="dGradeList"></datalist></label>
+    <label>Min value<input id="dMin" placeholder="$" inputmode="decimal"></label>
+    <label>Max value<input id="dMax" placeholder="$" inputmode="decimal"></label>
+    <div class="fbtns">
+      <button class="btn" id="dApply">APPLY</button>
+      <button class="btn ghost" id="dClear">CLEAR</button>
+      <button class="btn ghost" id="exportDup">EXPORT CSV</button>
+      <a class="btn ghost" id="dMetabase" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center">OPEN IN METABASE ↗</a>
+    </div>
+  </div>
+
+  <div class="totals" id="dupTotals"></div>
+
+  <div class="card" id="secDup">
+    <div class="card-h">
+      <span>DUPLICATE CARDS <span id="dupCount" style="color:var(--muted)"></span></span>
+      <span class="hint" id="dupSrc"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="dupTbl">
+        <thead><tr>
+          <th></th><th>YEAR</th><th>SET</th><th>INSERT</th><th>PLAYER</th><th>#</th>
+          <th>PARALLEL</th><th>GRADE</th><th>TAG</th>
+          <th>COPIES</th><th>AVG VALUE</th><th>EXPOSURE</th><th>AC</th>
+        </tr></thead>
+        <tbody></tbody><tfoot></tfoot>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============ WAREHOUSE ============ -->
+<div id="page-wh" class="hidden">
+
+  <div class="filters">
+    <label>Sport<input id="wSport" list="wSportList" placeholder="type or pick" autocomplete="off"><datalist id="wSportList"></datalist></label>
+    <label>Tag<input id="wTag" list="wTagList" placeholder="type or pick" autocomplete="off"><datalist id="wTagList"></datalist></label>
+    <label>Cert number<textarea id="wCert" rows="1" placeholder="paste a list"></textarea></label>
+    <label>AC number<textarea id="wAc" rows="1" placeholder="paste a list"></textarea></label>
+    <label>PO number<textarea id="wPo" rows="1" placeholder="4140, 4189"></textarea></label>
+    <label>Set name<input id="wSet" list="wSetList" placeholder="type or pick" autocomplete="off"><datalist id="wSetList"></datalist></label>
+    <label>Player name<input id="wPlayer" list="wPlayerList" placeholder="type or pick" autocomplete="off"><datalist id="wPlayerList"></datalist></label>
+    <label>Parallel name<input id="wParallel" list="wParallelList" placeholder="type or pick" autocomplete="off"><datalist id="wParallelList"></datalist></label>
+    <label>Grading company<input id="wCompany" list="wCompanyList" placeholder="type or pick" autocomplete="off"><datalist id="wCompanyList"></datalist></label>
+    <label>Grade<input id="wGrade" list="wGradeList" placeholder="type or pick" autocomplete="off"><datalist id="wGradeList"></datalist></label>
+    <label>Min value<input id="wMin" placeholder="$" inputmode="decimal"></label>
+    <label>Max value<input id="wMax" placeholder="$" inputmode="decimal"></label>
+    <div class="fbtns">
+      <button class="btn" id="wApply">APPLY</button>
+      <button class="btn ghost" id="wClear">CLEAR</button>
+      <button class="btn ghost" id="wExport">EXPORT CSV</button>
+      <a class="btn ghost" id="wMetabase" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center">OPEN IN METABASE ↗</a>
+      <span class="note" id="wHint">Any field takes a pasted list — commas or one per line.</span>
+    </div>
+  </div>
+
+  <div class="totals" id="whTotals"></div>
+
+  <div class="card">
+    <div class="card-h">
+      <span>WAREHOUSE CARDS <span id="whCount" style="color:var(--muted)"></span></span>
+      <span class="hint" id="whSrc"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="whTbl">
+        <thead><tr>
+          <th></th><th>PO</th><th>TAG</th><th>SPORT</th><th>CERT</th><th>8AC</th>
+          <th>GRADE</th><th>SET</th><th>INSERT</th><th>PLAYER</th><th>PARALLEL</th><th>EST. VALUE</th>
+        </tr></thead>
+        <tbody></tbody><tfoot></tfoot>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="lightbox" id="lightbox"><img id="lightboxImg" alt=""></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- storage shim ---------- */
+const mem={};
+const store={
+  async get(k){ try{ if(window.storage){const r=await window.storage.get(k,false);return r?JSON.parse(r.value):null;} }catch(e){}
+    try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){} return mem[k]??null; },
+  async set(k,v){ mem[k]=v; try{ if(window.storage){await window.storage.set(k,JSON.stringify(v),false);return;} }catch(e){}
+    try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
+};
+
+/* ---------- demo data ---------- */
+const ICONS={Baseball:"⚾",Basketball:"🏀",Football:"🏈",Hockey:"🏒",Soccer:"⚽",Pokemon:"⚡","Pokémon":"⚡","One Piece":"🏴‍☠️",Golf:"⛳","UFC / MMA":"🥊",Racing:"🏁","Marvel / TCG":"🃏",Wrestling:"🤼"};
+const raw=(cat,rows)=>rows.map(r=>({category:cat,pack:r[0],lower_band:r[1],current_inventory:r[2],cards_kept:r[3],doi:r[4],daily_output:r[5]}));
+const DEMO=[
+ ...raw("Baseball",[
+  ["$25","$10-$24",1417,188,8,206],["$50","$25-$49",2634,176,15,193],["$100","$50-$124",2393,170,14,187],
+  ["$250","$125-$249",2120,95,22,105],["$500","$250-$499",2506,45,56,49],["$1,000","$500-$1,349",1604,25,64,28],
+  ["$2,500","$1,350-$2,500",243,8,31,9],["$2,500","$2,501-$4,999",182,5,39,5],["$2,500","$5,000-$10,000",85,2,41,2],
+  ["$2,500","$10,000+",49,0,169,0]]),
+ ...raw("Basketball",[
+  ["$25","$10-$24",152,106,1,116],["$50","$25-$49",1169,168,7,185],["$100","$50-$124",2337,190,12,209],
+  ["$250","$125-$249",1467,109,14,120],["$500","$250-$499",2409,60,40,66],["$1,000","$500-$1,349",1946,62,32,68],
+  ["$2,500","$1,350-$2,500",683,19,36,21],["$2,500","$2,501-$4,999",350,11,31,13],["$2,500","$5,000-$10,000",100,3,30,4],
+  ["$2,500","$10,000+",57,1,80,1]]),
+ ...raw("Football",[
+  ["$25","$10-$24",3386,75,45,82],["$50","$25-$49",3591,183,20,201],["$100","$50-$124",4346,323,13,356],
+  ["$250","$125-$249",1981,131,15,144],["$500","$250-$499",2987,61,49,67],["$1,000","$500-$1,349",2992,37,80,41],
+  ["$2,500","$1,350-$2,500",827,11,76,12],["$2,500","$2,501-$4,999",266,5,50,6],["$2,500","$5,000-$10,000",82,2,48,2],
+  ["$2,500","$10,000+",42,0,109,0]]),
+ ...raw("Pokemon",[
+  ["$25","$10-$24",3801,218,17,240],["$50","$25-$49",4721,379,13,417],["$100","$50-$124",5930,313,19,345],
+  ["$250","$125-$249",4615,127,36,140],["$500","$250-$499",2471,78,32,86],["$1,000","$500-$1,349",654,30,22,33],
+  ["$2,500","$1,350-$2,500",125,9,14,10],["$2,500","$2,501-$4,999",109,3,34,4],["$2,500","$5,000-$10,000",50,1,97,1],
+  ["$2,500","$10,000+",45,0,140,0]]),
+ ...raw("One Piece",[
+  ["$25","$10-$24",179,15,12,17],["$50","$25-$49",1429,28,51,31],["$100","$50-$124",4795,41,116,46],
+  ["$250","$125-$249",2818,15,190,16],["$500","$250-$499",921,7,124,8],["$1,000","$500-$1,349",255,4,71,4],
+  ["$2,500","$1,350-$2,500",55,1,43,1],["$2,500","$2,501-$4,999",29,1,53,1],["$2,500","$5,000-$10,000",20,0,620,0],
+  ["$2,500","$10,000+",13,0,403,0]]),
+ ...raw("Hockey",[
+  ["$25","$10-$24",640,58,11,60],["$50","$25-$49",905,52,17,54],["$100","$50-$124",812,44,18,45],
+  ["$250","$125-$249",610,24,25,24],["$500","$250-$499",488,12,41,12],["$1,000","$500-$1,349",302,6,50,6],
+  ["$2,500","$1,350-$2,500",88,2,44,2],["$2,500","$2,501-$4,999",44,1,44,1],["$2,500","$10,000+",12,0,120,0]]),
+ ...raw("Soccer",[
+  ["$25","$10-$24",708,66,11,68],["$50","$25-$49",1042,61,17,62],["$100","$50-$124",944,50,19,49],
+  ["$250","$125-$249",702,27,26,27],["$500","$250-$499",560,14,40,14],["$1,000","$500-$1,349",344,7,49,7],
+  ["$2,500","$1,350-$2,500",102,3,34,3],["$2,500","$2,501-$4,999",50,1,50,1],["$2,500","$10,000+",18,0,90,0]]),
+ ...raw("UFC / MMA",[
+  ["$25","$10-$24",288,22,13,24],["$50","$25-$49",402,20,20,20],["$100","$50-$124",356,16,22,16],
+  ["$250","$125-$249",244,8,30,8],["$500","$250-$499",180,4,45,4],["$1,000","$500-$1,349",96,2,48,2],
+  ["$2,500","$1,350-$2,500",30,0,120,0]]),
+ ...raw("Marvel / TCG",[
+  ["$25","$10-$24",512,74,7,80],["$50","$25-$49",688,60,11,62],["$100","$50-$124",590,44,13,45],
+  ["$250","$125-$249",388,20,19,20],["$500","$250-$499",250,9,28,9],["$1,000","$500-$1,349",132,4,33,4],
+  ["$2,500","$1,350-$2,500",40,1,40,1]])
+];
+
+// Bump DATA_V whenever the bundled dataset changes — stale saved state is then ignored.
+const DATA_V="2026-09-02a";
+const K_ROWS="doi:rows:"+DATA_V, K_FLOW="doi:flow:"+DATA_V, K_SPORTS="doi:sports", K_FOLDER="doi:folder";
+let SPORT_CACHE={};
+let ROWS=[], current=null, catSort="inv", catDir=-1;
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num=v=>{const n=parseFloat(String(v??"").replace(/[$,\s]/g,""));return isNaN(n)?0:n;};
+const fmt=n=>Number(n||0).toLocaleString();
+const icon=c=>{
+  const k=String(c||"").trim().toLowerCase();
+  const m={baseball:"⚾",basketball:"🏀",football:"🏈",hockey:"🏒",soccer:"⚽",
+    pokemon:"⚡","pokémon":"⚡","one piece":"🏴‍☠️",marvel:"🦸",disney:"🏰",
+    wrestling:"🤼","star wars":"🌌",ufc:"🥊",mma:"🥊","multi sports":"🏅",hero:"🦸",dc:"🦇",
+    golf:"⛳",racing:"🏁",tennis:"🎾",comics:"📚","yu-gi-oh!":"🐉","yu-gi-oh":"🐉",yugioh:"🐉",grail:"🏆",
+    special:"✨",unspecified:"❔"};
+  return m[k]||"🎴";
+};
+function toast(m,err){const t=$("#toast");t.textContent=m;t.className="toast show"+(err?" err":"");clearTimeout(t._t);t._t=setTimeout(()=>t.className="toast"+(err?" err":""),2200);}
+function doiClass(d){ if(d===null||d===undefined||d==="")return""; d=num(d); return d<10?"d-crit":d<=20?"d-low":d<=90?"d-ok":"d-over"; }
+function normalize(){
+  ROWS.forEach(r=>{
+    r.current_inventory=num(r.current_inventory);
+    r.cards_kept=num(r.cards_kept);
+    r.daily_output=num(r.daily_output);
+    r.pack_v=num(r.pack);
+    r.doi=(r.doi===""||r.doi===null||r.doi===undefined)
+      ? (r.daily_output?Math.round(r.current_inventory/r.daily_output):null)
+      : num(r.doi);
+  });
+}
+function categories(){
+  const m={};
+  ROWS.forEach(r=>{
+    const c=r.category||"Uncategorized";
+    (m[c]=m[c]||{name:c,rows:[],inv:0,kept:0,out:0});
+    m[c].rows.push(r); m[c].inv+=r.current_inventory; m[c].kept+=r.cards_kept; m[c].out+=r.daily_output;
+  });
+  return Object.values(m).map(c=>({
+    ...c,
+    doi: c.out ? Math.round(c.inv/c.out) : null,
+    crit: c.rows.filter(r=>r.doi!==null&&r.doi<10).length,
+    over: c.rows.filter(r=>r.doi!==null&&r.doi>90).length
+  }));
+}
+
+/* ---------- overview ---------- */
+function renderOverview(){
+  const q=$("#catSearch").value.trim().toLowerCase();
+  let cats=categories();
+  const allInv=cats.reduce((s,c)=>s+c.inv,0), allKept=cats.reduce((s,c)=>s+c.kept,0),
+        allOut=cats.reduce((s,c)=>s+c.out,0), allCrit=cats.reduce((s,c)=>s+c.crit,0),
+        allOver=cats.reduce((s,c)=>s+c.over,0);
+  $("#totals").innerHTML=`
+    <div class="tot"><div class="k">TOTAL CARDS</div><div class="v">${fmt(allInv)}</div><div class="s">across ${cats.length} categories</div></div>
+    <div class="tot"><div class="k">CARDS KEPT</div><div class="v gold">${fmt(allKept)}</div><div class="s">${allInv?((allKept/allInv)*100).toFixed(1):0}% of inventory</div></div>
+    <div class="tot"><div class="k">DAILY OUTPUT</div><div class="v">${fmt(allOut)}</div><div class="s">cards leaving per day</div></div>
+    <div class="tot"><div class="k">BLENDED DOI</div><div class="v ${allOut&&allInv/allOut<10?"red":allOut&&allInv/allOut<=20?"gold":"green"}">${allOut?Math.round(allInv/allOut):"—"}d</div><div class="s">total inventory ÷ daily output</div></div>
+    <div class="tot ${allCrit?"click":""}" data-drill="crit"><div class="k">BANDS UNDER 10D</div><div class="v ${allCrit?"red":"green"}">${allCrit}</div><div class="s">${allCrit?"restock these first":"none thin"}</div></div>
+    <div class="tot ${allOver?"click":""}" data-drill="over"><div class="k">BANDS OVER 90D</div><div class="v ${allOver?"gold":"green"}">${allOver}</div><div class="s">${allOver?"overstocked, slow to clear":"none stale"}</div></div>`;
+  $$("#totals .tot.click").forEach(t=>t.onclick=()=>openLow(t.dataset.drill));
+
+  if(q) cats=cats.filter(c=>c.name.toLowerCase().includes(q));
+  cats=cats.map(c=>({...c,rate:c.inv?(c.kept/c.inv)*100:0,bands:c.rows.length}));
+  cats.sort((a,b)=>{
+    const x=a[catSort], y=b[catSort];
+    if(catSort==="name") return String(x).localeCompare(String(y))*catDir;
+    return ((x??0)-(y??0))*catDir;
+  });
+
+  $("#catShown").textContent=`· ${cats.length} of ${categories().length}`;
+  $("#catTbl tbody").innerHTML=cats.length?cats.map(c=>`
+    <tr data-c="${esc(c.name)}">
+      <td class="catname">${icon(c.name)} ${esc(c.name)}</td>
+      <td class="strong">${fmt(c.inv)}</td>
+      <td class="strong" style="color:var(--gold)">${fmt(c.kept)}</td>
+      <td>${c.rate.toFixed(1)}%</td>
+      <td>${fmt(c.out)}</td>
+      <td><span class="doi-cell ${doiClass(c.doi)}">${c.doi===null?"—":fmt(c.doi)}</span></td>
+      <td style="color:${c.crit?"var(--red)":"var(--muted)"}">${c.crit}</td>
+      <td style="color:${c.over?"var(--blue)":"var(--muted)"}">${c.over}</td>
+      <td style="color:var(--muted)">${c.bands}</td>
+    </tr>`).join(""):`<tr><td colspan="9" class="note" style="padding:24px;text-align:left">No category matches that search.</td></tr>`;
+  const ti=cats.reduce((s,c)=>s+c.inv,0), tk=cats.reduce((s,c)=>s+c.kept,0), to=cats.reduce((s,c)=>s+c.out,0);
+  $("#catTbl tfoot").innerHTML=cats.length?`<tr>
+    <td>TOTAL</td><td>${fmt(ti)}</td><td>${fmt(tk)}</td><td>${ti?((tk/ti)*100).toFixed(1):0}%</td>
+    <td>${fmt(to)}</td><td>${to?Math.round(ti/to):"—"}</td>
+    <td>${cats.reduce((s,c)=>s+c.crit,0)}</td><td>${cats.reduce((s,c)=>s+c.over,0)}</td>
+    <td>${cats.reduce((s,c)=>s+c.bands,0)}</td></tr>`:"";
+  $("#noCats").classList.add("hidden");
+  $$("#catTbl tbody tr[data-c]").forEach(tr=>tr.onclick=()=>openCat(tr.dataset.c));
+  $("#catCount").textContent=categories().length;
+  $("#rowCount").textContent=ROWS.length;
+}
+$$("#catTbl th").forEach(th=>th.onclick=()=>{
+  const k=th.dataset.s;
+  if(catSort===k) catDir*=-1; else {catSort=k;catDir=k==="name"?1:-1;}
+  $$("#catTbl th").forEach(t=>t.innerHTML=t.innerHTML.replace(/ <span class="ar">[▲▼]<\/span>/,""));
+  th.innerHTML+=` <span class="ar">${catDir===1?"▲":"▼"}</span>`;
+  renderOverview();
+});
+
+/* ---------- detail ---------- */
+function openCat(name){
+  current=name;
+  $("#overview").classList.add("hidden"); $("#detail").classList.remove("hidden");
+  $("#detTitle").innerHTML=`${icon(name)} ${esc(name)}`;
+  $("#detQ").textContent="DOI BY PACK BAND";
+  $("#packSearch").value="";
+  renderDetail();
+  window.scrollTo({top:0,behavior:"instant"});
+}
+$("#backBtn").onclick=()=>{
+  current=null; $("#detail").classList.add("hidden"); $("#overview").classList.remove("hidden"); renderOverview();
+};
+function detRows(){
+  const q=$("#packSearch").value.trim().toLowerCase();
+  return ROWS.filter(r=>(r.category||"Uncategorized")===current)
+    .filter(r=>!q||[r.pack,r.lower_band].join(" ").toLowerCase().includes(q));
+}
+function renderDetail(){
+  const all=ROWS.filter(r=>(r.category||"Uncategorized")===current);
+  const inv=all.reduce((s,r)=>s+r.current_inventory,0), kept=all.reduce((s,r)=>s+r.cards_kept,0),
+        out=all.reduce((s,r)=>s+r.daily_output,0);
+  const crit=all.filter(r=>r.doi!==null&&r.doi<10), over=all.filter(r=>r.doi!==null&&r.doi>90);
+  $("#detTotals").innerHTML=`
+    <div class="tot"><div class="k">CARDS IN INVENTORY</div><div class="v">${fmt(inv)}</div><div class="s">${all.length} pack bands</div></div>
+    <div class="tot"><div class="k">CARDS KEPT</div><div class="v gold">${fmt(kept)}</div><div class="s">${inv?((kept/inv)*100).toFixed(1):0}% of inventory</div></div>
+    <div class="tot"><div class="k">DAILY OUTPUT</div><div class="v">${fmt(out)}</div><div class="s">cards per day</div></div>
+    <div class="tot"><div class="k">BLENDED DOI</div><div class="v ${out&&inv/out<10?"red":out&&inv/out<=20?"gold":"green"}">${out?Math.round(inv/out):"—"}d</div><div class="s">inventory ÷ daily output</div></div>
+    <div class="tot"><div class="k">UNDER 10 DAYS</div><div class="v ${crit.length?"red":"green"}">${crit.length}</div><div class="s">${crit.length?esc(crit.map(r=>r.lower_band).join(", ")):"none thin"}</div></div>
+    <div class="tot"><div class="k">OVER 90 DAYS</div><div class="v ${over.length?"gold":"green"}">${over.length}</div><div class="s">${over.length?esc(over.map(r=>r.lower_band).join(", ")):"none stale"}</div></div>`;
+
+  const rows=detRows();
+  $("#detCount").textContent=`· ${rows.length} of ${all.length}`;
+  $("#tbl tbody").innerHTML=rows.length?rows.map(r=>`
+    <tr>
+      <td class="pk">${esc(r.pack)}</td>
+      <td>${esc(r.lower_band)}</td>
+      <td>${fmt(r.current_inventory)}</td>
+      <td>${fmt(r.cards_kept)}</td>
+      <td><span class="doi-cell ${doiClass(r.doi)}">${r.doi===null?"—":fmt(r.doi)}</span></td>
+      <td>${fmt(r.daily_output)}</td>
+    </tr>`).join(""):`<tr><td colspan="6" class="note" style="padding:24px;text-align:left">No pack band matches that filter.</td></tr>`;
+  const fi=rows.reduce((s,r)=>s+r.current_inventory,0), fk=rows.reduce((s,r)=>s+r.cards_kept,0), fo=rows.reduce((s,r)=>s+r.daily_output,0);
+  $("#tbl tfoot").innerHTML=rows.length?`<tr><td>TOTAL</td><td>${rows.length} bands</td><td>${fmt(fi)}</td><td>${fmt(fk)}</td><td>${fo?Math.round(fi/fo):"—"}</td><td>${fmt(fo)}</td></tr>`:"";
+}
+$("#packSearch").oninput=renderDetail;
+$("#catSearch").oninput=()=>{renderOverview(); if(lowMode) openLow(lowMode);};
+$("#exportCats").onclick=()=>{
+  const q=$("#catSearch").value.trim().toLowerCase();
+  const cats=categories().filter(c=>!q||c.name.toLowerCase().includes(q));
+  if(!cats.length) return toast("Nothing to export",true);
+  const cols=["category","total_cards","cards_kept","keep_rate_pct","daily_output","blended_doi","bands_under_10d","bands_over_90d","pack_bands"];
+  const csv=[cols,...cats.map(c=>[c.name,c.inv,c.kept,c.inv?((c.kept/c.inv)*100).toFixed(1):0,c.out,c.doi??"",c.crit,c.over,c.rows.length])]
+    .map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download="doi-categories.csv"; a.click(); toast("CSV exported");
+};
+$("#exportCsv").onclick=()=>{
+  const rows=detRows(); if(!rows.length) return toast("Nothing to export",true);
+  const cols=["category","pack","lower_band","current_inventory","cards_kept","doi","daily_output"];
+  const csv=[cols,...rows.map(r=>cols.map(c=>r[c]??""))].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download=`doi-${String(current).toLowerCase().replace(/\W+/g,"-")}.csv`; a.click(); toast("CSV exported");
+};
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&current) $("#backBtn").click();
+  if(e.key==="/"&&document.activeElement.tagName!=="INPUT"&&document.activeElement.tagName!=="TEXTAREA"){
+    e.preventDefault(); (current?$("#packSearch"):$("#catSearch")).focus();
+  }
+});
+
+/* ---------- data loading ---------- */
+const ALIASES={
+  category:["category","cat","sport","vertical","game","question","tab"],
+  pack:["pack","pack price","pack_price","pack tier","tier"],
+  lower_band:["lower_band","lower band","band","price band","value band","range","lower"],
+  current_inventory:["current_inventory","current inventory","inventory","inv","on hand","qty","quantity","cards"],
+  cards_kept:["cards_kept","cards kept","kept","keeps"],
+  doi:["doi","days of inventory","days_of_inventory","days on inventory","days"],
+  daily_output:["daily_output","daily output","output","daily","per day","daily_sales","velocity"]
+};
+function canon(h){
+  const s=String(h).trim().toLowerCase().replace(/[_\s]+/g," ");
+  for(const [k,l] of Object.entries(ALIASES)) if(l.includes(s)||k===s.replace(/ /g,"_")) return k;
+  return s.replace(/ /g,"_");
+}
+function parseCSV(text){
+  const lines=text.trim().split(/\r?\n/).filter(Boolean);
+  const split=l=>{const out=[];let cur="",q=false;
+    for(let i=0;i<l.length;i++){const c=l[i];
+      if(c==='"'){ if(q&&l[i+1]==='"'){cur+='"';i++;} else q=!q; }
+      else if((c===","||c==="\t")&&!q){out.push(cur);cur="";}
+      else cur+=c;}
+    out.push(cur);return out.map(s=>s.trim());};
+  const heads=split(lines[0]).map(canon);
+  return lines.slice(1).map(l=>{const cells=split(l),o={};heads.forEach((h,i)=>o[h]=cells[i]??"");return o;});
+}
+function readInput(){
+  const raw=$("#dataIn").value.trim();
+  if(!raw){ toast("Paste some rows first",true); return null; }
+  let rows;
+  try{
+    if(raw[0]==="["||raw[0]==="{"){
+      const j=JSON.parse(raw);
+      rows=(Array.isArray(j)?j:[j]).map(o=>{const n={};Object.entries(o).forEach(([k,v])=>n[canon(k)]=v);return n;});
+    } else rows=parseCSV(raw);
+  }catch(e){ toast("Couldn't parse that: "+e.message,true); return null; }
+  if(!rows.length){ toast("No rows found",true); return null; }
+  const fallback=$("#pasteCat").value.trim()||"Uncategorized";
+  rows.forEach(r=>{ if(!r.category) r.category=fallback; });
+  return rows;
+}
+$("#toggleData").onclick=()=>$("#dataPanel").classList.toggle("hidden");
+$("#closeData").onclick=()=>$("#dataPanel").classList.add("hidden");
+$("#loadData").onclick=()=>{
+  const rows=readInput(); if(!rows) return;
+  ROWS=rows; $("#src").textContent="loaded data"; after(rows,"Loaded");
+};
+$("#appendData").onclick=()=>{
+  const rows=readInput(); if(!rows) return;
+  ROWS=ROWS.concat(rows); $("#src").textContent="loaded data"; after(rows,"Added");
+};
+function after(rows,verb){
+  normalize(); persist();
+  $("#dataStatus").textContent=`${verb} ${rows.length} row${rows.length>1?"s":""} · categories: ${[...new Set(ROWS.map(r=>r.category))].join(", ")}`;
+  if(current&&!ROWS.some(r=>r.category===current)) $("#backBtn").click();
+  renderOverview(); if(current) renderDetail();
+  toast(`${verb} ${rows.length} rows`);
+}
+$("#demoData").onclick=()=>{
+  ROWS=JSON.parse(JSON.stringify(DEMO)); $("#src").textContent="order list · Sep 1";
+  normalize(); persist(); $("#dataStatus").textContent="Demo dataset restored.";
+  if(current) $("#backBtn").click(); renderOverview(); toast("Demo data restored");
+};
+
+/* ---------- low / high band drilldown ---------- */
+let lowMode=null;
+function openLow(mode){
+  lowMode=mode;
+  const q=$("#catSearch").value.trim().toLowerCase();
+  const rows=ROWS.filter(r=>{
+    if(q && !String(r.category||"").toLowerCase().includes(q)) return false;
+    if(r.doi===null||r.doi===undefined) return false;
+    return mode==="crit" ? r.doi<10 : r.doi>90;
+  });
+  $("#lowTitle").textContent = mode==="crit"
+    ? `BANDS UNDER 10 DAYS · ${rows.length}`
+    : `BANDS OVER 90 DAYS · ${rows.length}`;
+  $("#lowTbl tbody").innerHTML=rows.length?rows.map(r=>`
+    <tr data-c="${esc(r.category)}">
+      <td class="catname">${icon(r.category)} ${esc(r.category)}</td>
+      <td class="pk">${esc(r.pack)}</td>
+      <td>${esc(r.lower_band)}</td>
+      <td>${fmt(r.current_inventory)}</td>
+      <td>${fmt(r.cards_kept)}</td>
+      <td><span class="doi-cell ${doiClass(r.doi)}">${fmt(r.doi)}</span></td>
+      <td>${fmt(r.daily_output)}</td>
+    </tr>`).join(""):`<tr><td colspan="7" class="note" style="padding:24px;text-align:left">No bands in this range.</td></tr>`;
+  $$("#lowTbl tbody tr[data-c]").forEach(tr=>tr.onclick=()=>openCat(tr.dataset.c));
+  $("#lowCard").classList.remove("hidden");
+  $("#lowCard").scrollIntoView({block:"nearest"});
+}
+$("#lowClose").onclick=()=>{ lowMode=null; $("#lowCard").classList.add("hidden"); };
+
+
+/* ================= INBOUND & WIP ================= */
+const FLOW_DEMO=[
+ {"po_number":"PO-4232","vendor":"Ryan Knott","cost":29493,"cards":0,"tracking":"","sheet_name":"PO 4232 8/31 Poke Direct Ryan Knott","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"2026-09-01","eta":"","carrier":""},
+ {"po_number":"PO-4229","vendor":"Kevin Hallman","cost":25977,"cards":0,"tracking":"","sheet_name":"PO 4229 Kevin Hallmans Cheap CGC","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"2026-08-31","eta":"","carrier":""},
+ {"po_number":"PO-4228","vendor":"Ryan Pajer","cost":72936,"cards":0,"tracking":"","sheet_name":"PO 4228- Ryan Pajer 8/30/26 Carly Shebreaks","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"2026-08-31","eta":"","carrier":""},
+ {"po_number":"PO-4227","vendor":"Ryan Pajer","cost":80655,"cards":0,"tracking":"","sheet_name":"PO 4227- Ryan Pajer 8/27/26 Clevboys","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"2026-08-31","eta":"","carrier":""},
+ {"po_number":"PO-4225","vendor":"WMBK Holdings","cost":0,"cards":0,"tracking":"","sheet_name":"\u2014","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"","eta":"","carrier":""},
+ {"po_number":"PO-4224","vendor":"WMBK Holdings","cost":0,"cards":0,"tracking":"","sheet_name":"\u2014","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"","eta":"","carrier":""},
+ {"po_number":"PO-4223","vendor":"Eliel Herrera","cost":0,"cards":0,"tracking":"","sheet_name":"\u2014","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"","eta":"","carrier":""},
+ {"po_number":"PO-4222","vendor":"Mark Rhodus","cost":238921,"cards":0,"tracking":"","sheet_name":"PO 4222 - 8/27/26 - HIT EXCHANGE - ARENA CLUB","sheet_url":"","stage":"WIP","stage_name":"In process","received_date":"2026-09-01"},
+ {"po_number":"PO-4221","vendor":"Ryan Pajer","cost":112690,"cards":0,"tracking":"","sheet_name":"PO 4221 - Ryan Pajer 8/27/26 Tyler","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"2026-08-27","eta":"","carrier":""},
+ {"po_number":"PO-4220","vendor":"Ryan Pajer","cost":55058,"cards":0,"tracking":"","sheet_name":"PO 4220 - Ryan Pajer 8/27/26 Dante","sheet_url":"","stage":"WIP","stage_name":"In process","received_date":"2026-09-01"},
+ {"po_number":"PO-4219","vendor":"Mark Rhodus","cost":73293,"cards":0,"tracking":"","sheet_name":"PO 4219 - 8/25/26 - HIT EXCHANGE - ARENA CLUB","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"2026-08-27","eta":"","carrier":""},
+ {"po_number":"PO-4218","vendor":"Ryan Pajer","cost":0,"cards":0,"tracking":"","sheet_name":"Update when Ready","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"2026-08-31","eta":"","carrier":""},
+ {"po_number":"PO-4214","vendor":"Ryan Pajer","cost":126251,"cards":0,"tracking":"","sheet_name":"PO 4214 - Ryan Pajer 8/21/26 Ethan Vintage","sheet_url":"","stage":"WIP","stage_name":"In process","received_date":"2026-09-01"},
+ {"po_number":"PO-4213","vendor":"Sonny Nassiri","cost":221291,"cards":0,"tracking":"","sheet_name":"PO 4213 - HappyCardCollector - 8/26/26 (8/13 Buying Guide)","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"2026-08-27","eta":"","carrier":""},
+ {"po_number":"PO-4209","vendor":"WMBK Holdings","cost":0,"cards":0,"tracking":"","sheet_name":"\u2014","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"","eta":"","carrier":""},
+ {"po_number":"PO-4206","vendor":"Ryan Pajer","cost":76958,"cards":0,"tracking":"","sheet_name":"PO 4206 - Ryan Pajer 8/26/26 Mary Gamble","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"2026-08-26","eta":"","carrier":""},
+ {"po_number":"PO-4205","vendor":"WMBK Holdings","cost":22539,"cards":0,"tracking":"","sheet_name":"PO 4205 Arena/WMBK 8.26.26","sheet_url":"","stage":"WIP","stage_name":"In process","received_date":"2026-08-28"},
+ {"po_number":"PO-4204","vendor":"Ben Hatley","cost":15475,"cards":0,"tracking":"","sheet_name":"PO 4204 - B&W Sheet 7/27/26","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"","eta":"","carrier":""},
+ {"po_number":"PO-4200","vendor":"Kevin Hallman","cost":165989,"cards":0,"tracking":"","sheet_name":"PO 4200 - Kevin Hallman Sports 8/20","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"","eta":"","carrier":""},
+ {"po_number":"PO-4198","vendor":"Andy Sung","cost":4272,"cards":0,"tracking":"","sheet_name":"PO 4198 PANDY X ARENA 8/26","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"2026-08-27","eta":"","carrier":""},
+ {"po_number":"PO-4197","vendor":"Giovanni Dugo","cost":2453,"cards":0,"tracking":"","sheet_name":"PO 4197 Gio Central Singles 8/23/36","sheet_url":"","stage":"WIP","stage_name":"In process","received_date":"2026-08-26"},
+ {"po_number":"PO-4192","vendor":"AC Shows - Reslab","cost":31500,"cards":0,"tracking":"","sheet_name":"PO 4192 - Reslabs","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"2026-08-23","eta":"","carrier":""},
+ {"po_number":"PO-4191","vendor":"AC Shows - Justin","cost":18550,"cards":7,"tracking":"","sheet_name":"PO 4191 - AC Shows","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"2026-08-23","eta":"","carrier":""},
+ {"po_number":"PO-4182","vendor":"Andy Sung","cost":3901,"cards":0,"tracking":"","sheet_name":"ARENA x Pandy Singles 8/10 - PO 4812","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"2026-08-21","eta":"","carrier":""},
+ {"po_number":"PO-4175","vendor":"Kevin Hallman","cost":6466,"cards":647,"tracking":"","sheet_name":"PO 4175 Kevin Hallman Raw 8/18","sheet_url":"","stage":"WIP","stage_name":"In process","received_date":"2026-08-24"},
+ {"po_number":"PO-4155","vendor":"Giovanni Dugo","cost":3580,"cards":0,"tracking":"","sheet_name":"PO 4155 Gio Central Singles 8/18/26","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"2026-08-19","eta":"","carrier":""},
+ {"po_number":"PO-4142","vendor":"AC SHOWS","cost":22000,"cards":1,"tracking":"","sheet_name":"PO 4142 - Spider Man Super Grail Comic","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"2026-08-17","eta":"","carrier":""},
+ {"po_number":"PO-4138","vendor":"WMBK Holdings","cost":18445,"cards":211,"tracking":"","sheet_name":"PO 4138 Arena/WMBK 8.19.26","sheet_url":"","stage":"WIP","stage_name":"In process","received_date":"2026-08-26"},
+ {"po_number":"PO-4137","vendor":"WMBK Holdings","cost":80789,"cards":187,"tracking":"","sheet_name":"PO 4137 Arena/WMBK 8.19.26","sheet_url":"","stage":"WIP","stage_name":"In process","received_date":"2026-08-28"},
+ {"po_number":"PO-4134","vendor":"AC Shows - Reslab","cost":30000,"cards":0,"tracking":"","sheet_name":"PO - AC shows Reslabs","sheet_url":"","stage":"Inbound","stage_name":"Awaiting delivery","ship_date":"","eta":"","carrier":""},
+ {stage:"Duplicates",card:"2023 Panini Prizm Victor Wembanyama #136",category:"Basketball",grade:"PSA 10",copies:14,on_hand:11,inbound:3,avg_cost:2180,comp_value:3100,oldest_date:"2026-04-12"},
+ {stage:"Duplicates",card:"2018 Panini Prizm Luka Doncic #280",category:"Basketball",grade:"PSA 10",copies:9,on_hand:9,inbound:0,avg_cost:1790,comp_value:2400,oldest_date:"2026-03-02"},
+ {stage:"Duplicates",card:"2024 Topps Chrome Paul Skenes #159",category:"Baseball",grade:"PSA 10",copies:22,on_hand:18,inbound:4,avg_cost:214,comp_value:245,oldest_date:"2026-05-19"},
+ {stage:"Duplicates",card:"2018 Topps Update Shohei Ohtani #US1",category:"Baseball",grade:"PSA 9",copies:31,on_hand:27,inbound:4,avg_cost:312,comp_value:395,oldest_date:"2026-02-26"},
+ {stage:"Duplicates",card:"1989 Upper Deck Ken Griffey Jr. #1",category:"Baseball",grade:"PSA 8",copies:6,on_hand:6,inbound:0,avg_cost:126,comp_value:165,oldest_date:"2026-06-18"},
+ {stage:"Duplicates",card:"2023 Panini Prizm CJ Stroud #301",category:"Football",grade:"PSA 10",copies:12,on_hand:9,inbound:3,avg_cost:318,comp_value:395,oldest_date:"2026-05-04"},
+ {stage:"Duplicates",card:"2021 Panini Select Ja'Marr Chase #44",category:"Football",grade:"BGS 10",copies:5,on_hand:5,inbound:0,avg_cost:512,comp_value:470,oldest_date:"2026-03-02"},
+ {stage:"Duplicates",card:"2022 Pokemon Charizard VSTAR #018",category:"Pokemon",grade:"PSA 10",copies:41,on_hand:36,inbound:5,avg_cost:88,comp_value:112,oldest_date:"2026-01-22"},
+ {stage:"Duplicates",card:"2021 Pokemon Umbreon VMAX Alt Art #215",category:"Pokemon",grade:"PSA 10",copies:7,on_hand:7,inbound:0,avg_cost:1420,comp_value:1310,oldest_date:"2026-04-30"},
+ {stage:"Duplicates",card:"2022 One Piece Shanks Manga Rare OP01-121",category:"One Piece",grade:"PSA 10",copies:18,on_hand:18,inbound:0,avg_cost:640,comp_value:520,oldest_date:"2025-12-08"},
+ {stage:"Duplicates",card:"2022 One Piece Luffy Leader OP01-003",category:"One Piece",grade:"PSA 9",copies:3,on_hand:3,inbound:0,avg_cost:95,comp_value:130,oldest_date:"2026-07-14"},
+ {stage:"Duplicates",card:"2017 Panini Prizm Patrick Mahomes #269",category:"Football",grade:"PSA 9",copies:4,on_hand:2,inbound:2,avg_cost:1105,comp_value:1490,oldest_date:"2026-08-05"}
+];
+let FLOW=[];
+const FALIAS={
+  stage:["stage","status","state","type"],stage_name:["stage_name","wip stage","step","workflow stage"],
+  po_number:["po","po_number","po #","purchase order","order"],vendor:["vendor","seller","supplier","consignor","source"],
+  category:["category","sport","game","vertical","cat"],cards:["cards","card count","qty","quantity","units","cards_in"],
+  cost:["cost","value","total cost","spend","amount","cost_basis"],
+  ship_date:["ship_date","shipped","ship date","date shipped"],eta:["eta","expected","arrival","expected arrival","due"],
+  received_date:["received_date","received","date received","arrived","intake date"],
+  carrier:["carrier","shipper"],tracking:["tracking","tracking #","tracking number"],
+  owner:["owner","buyer","assigned","assignee"],notes:["notes","note","comment","memo"],
+  card:["card","card name","title","description","item"],grade:["grade","final grade"],
+  copies:["copies","count","dupes","duplicates","qty on hand","total copies"],
+  on_hand:["on_hand","in hand","held","vaulted"],inbound:["inbound","in transit","incoming"],
+  avg_cost:["avg_cost","average cost","avg landed cost","unit cost","cost each"],
+  comp_value:["comp_value","comp","market value","est value","estimated value"],
+  oldest_date:["oldest_date","oldest","first acquired","since"]
+};
+function fcanon(h){
+  const t=String(h).trim().toLowerCase().replace(/[_\s]+/g," ");
+  for(const [k,l] of Object.entries(FALIAS)) if(l.includes(t)||k===t.replace(/ /g,"_")) return k;
+  return t.replace(/ /g,"_");
+}
+const D=v=>{const d=new Date(v);return isNaN(d)?null:d;};
+function daysBetween(a,b){ if(!a||!b) return null; return Math.round((b-a)/864e5); }
+function normFlow(){
+  FLOW.forEach(r=>{
+    r.cards=num(r.cards); r.cost=num(r.cost);
+    if(!r.stage) r.stage = r.copies||r.card ? "Duplicates" : r.received_date ? "WIP" : "Inbound";
+    r.stage = /dup/i.test(r.stage) ? "Duplicates" : /wip|hand|progress/i.test(r.stage) ? "WIP" : /inbound|transit|ship/i.test(r.stage) ? "Inbound" : r.stage;
+    if(r.stage==="Duplicates"){
+      r.copies=num(r.copies); r.on_hand=num(r.on_hand); r.inbound=num(r.inbound);
+      r.avg_cost=num(r.avg_cost); r.comp_value=num(r.comp_value);
+      if(!r.copies) r.copies=r.on_hand+r.inbound;
+    }
+  });
+}
+function flowFiltered(){
+  const q=$("#flowSearch").value.trim().toLowerCase(), c=$("#flowCat").value;
+  return FLOW.filter(r=>{
+    if(c!=="all" && r.category!==c) return false;
+    if(!q) return true;
+    return [r.po_number,r.sheet_name,r.vendor,r.category,r.owner,r.tracking,r.stage_name,r.flag,r.card,r.grade].join(" ").toLowerCase().includes(q);
+  });
+}
+function stageChip(s){
+  const k=String(s||"").toLowerCase();
+  const cls=/intake|scan/.test(k)?"s1":/grad|review/.test(k)?"s2":/vault|complete|done/.test(k)?"s3":"";
+  return `<span class="chip ${cls}">${esc((s||"—").toUpperCase())}</span>`;
+}
+function sheetCell(r){
+  const name=esc(r.sheet_name||"—");
+  return r.sheet_url
+    ? `<a href="${esc(r.sheet_url)}" target="_blank" rel="noopener">${name}</a>`
+    : name;
+}
+function stageCell(r){
+  if(!r.stage_name) return "";
+  const k=r.stage_name.toLowerCase();
+  const cls=/intake|await/.test(k)?"s1":/verified|damage/.test(k)?"s2":/ship/.test(k)?"s3":"";
+  return `<span class="chip ${cls}">${esc(r.stage_name.toUpperCase())}</span>`;
+}
+function flagCell(r){
+  if(!r.flag) return "";
+  const bad=/hold|issue/i.test(r.flag);
+  return `<span class="chip ${bad?"bad":"s2"}">${esc(r.flag.toUpperCase())}</span>`;
+}
+function pkgCell(r){
+  if(!r.pkg_total) return "—";
+  const done=r.pkg_received>=r.pkg_total;
+  return `<span class="chip ${done?"s3":"s2"}">${fmt(r.pkg_received)}/${fmt(r.pkg_total)}</span>`;
+}
+function breakdownCell(r){
+  if(r._sports&&r._sports.length){
+    const sp=r._sports.map(x=>`<span class="chip s3">${icon(x.sport)} ${esc(x.sport)} ${fmt(x.cards)}</span>`).join("");
+    const ti=(r._tiers||[]).map(x=>`<span class="chip s2">${esc(x.tier)} ${fmt(x.cards)}</span>`).join("");
+    const ps=r._passed?`<span class="chip bad">passed ${fmt(r._passed)}</span>`:"";
+    const src=r._sportSrc==="sheet"?`<span class="chip" title="from the vendor's buying sheet">sheet</span>`:"";
+    const tail=ti+ps+src;
+    return sp+(tail?`<div style="margin-top:5px">${tail}</div>`:"");
+  }
+  if(r._sportErr) return r._sportErr==="—"||r._sportErr==="api-missing"
+    ? `<span class="note">—</span>`
+    : `<span class="note" title="${esc(r._sportErr)}">${esc(r._sportErr).slice(0,40)}</span>`;
+
+  return `<span class="note">—</span>`;
+}
+const API_BASE="/api/sheets";
+const MB_BASE="https://arena-club.metabaseapp.com";
+// widget slugs on the saved questions — adjust here if a filter is named differently
+const MB_SLUGS={sport:"sport",tag:"tag",cert:"cert_number",ac:"ac_number",po:"po_number",
+  set:"set_name",player:"player_name",parallel:"parallel_name",company:"grading_company",
+  grade:"grade",min:"min_estimated_value",max:"max_estimated_value"};
+
+/** Same filters, opened on the Metabase question itself. */
+function metabaseUrl(cardId,fields){
+  const p=new URLSearchParams();
+  Object.entries(fields).forEach(([key,id])=>{
+    const v=$("#"+id)?$("#"+id).value.trim():"";
+    if(!v) return;
+    const slug=MB_SLUGS[key]; if(!slug) return;
+    // a pasted list becomes repeated params, which Metabase reads as multi-select
+    v.split(/[,\n\r\t;]+/).map(t=>t.trim()).filter(Boolean)
+     .forEach(t=>p.append(slug,t));
+  });
+  const qs=p.toString();
+  return `${MB_BASE}/question/${cardId}${qs?"?"+qs:""}`;
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let API_OK=null, SHEETS_OK=null;   // null = untested, false = not available here
+
+async function apiGet(qs){
+  const res=await fetch(`${API_BASE}?${qs}`);
+  const body=await res.json().catch(()=>({ok:false,error:`HTTP ${res.status}`}));
+  if(res.status===404||res.status===405){ API_OK=false; throw new Error("api-missing"); }
+  if(!res.ok||body.ok===false) throw new Error(body.error||`HTTP ${res.status}`);
+  API_OK=true;
+  return body;
+}
+
+function applySportCache(){
+  FLOW.forEach(r=>{
+    const c=SPORT_CACHE[r.po_number];
+    if(c&&c.sports&&c.sports.length){ r._sports=c.sports; if(!r.cards&&c.total) r.cards=c.total; }
+  });
+}
+
+/** Inbound + WIP straight from Google Sheets via the serverless reader. */
+async function loadFromApi(){
+  const body=await apiGet("feed=pos");
+  const rows=(body.orders||[]).map(o=>({
+    po_number:o.po_number, vendor:o.vendor||"—", cost:num(o.cost), cards:num(o.cards),
+    tracking:o.tracking||"", sheet_name:o.sheet_name||"", sheet_url:o.sheet_url||"",
+    stage:o.stage, stage_name:o.stage_name||"", received_date:o.date_rcvd||"",
+    ship_date:o.first_rcvd||"", eta:"", carrier:o.tracking?carrierOf(o.tracking):"",
+    pkg_total:num(o.pkg_total), pkg_received:num(o.pkg_received),
+    flag:o.flag||"", paid:!!o.paid, notes:o.notes||""
+  }));
+  if(!rows.length) throw new Error("no open POs returned");
+  FLOW=FLOW.filter(r=>r.stage==="Duplicates").concat(rows);
+  normFlow(); applySportCache(); persistFlow(); renderFlow();
+  $("#src").textContent="google sheets · live";
+  return rows.length;
+}
+
+/** Pack-band rows per category, from the saved Metabase questions. */
+async function loadDoiFromMetabase(){
+  const res=await fetch("/api/doi");
+  const body=await res.json().catch(()=>({ok:false,error:`HTTP ${res.status}`}));
+  if(!body.ok) throw new Error(body.error||"DOI unavailable");
+  const rows=(body.rows||[]).map(r=>({
+    category:r.category, pack:r.pack, lower_band:r.lower_band,
+    current_inventory:num(r.current_inventory), cards_kept:num(r.cards_kept),
+    doi:num(r.doi), daily_output:num(r.daily_output)
+  }));
+  if(!rows.length) throw new Error("no rows returned");
+  ROWS=rows; normalize(); persist();
+  $("#src").textContent="metabase · live";
+  renderOverview(); if(current) renderDetail();
+  return {rows:rows.length, cats:[...new Set(rows.map(r=>r.category))].length, problems:body.problems||[]};
+}
+
+/** One Metabase call fills the sport breakdown for every PO. */
+async function loadSportsFromMetabase(){
+  const res=await fetch("/api/sports");
+  const body=await res.json().catch(()=>({ok:false,error:`HTTP ${res.status}`}));
+  if(!body.ok) throw new Error(body.error||"sports unavailable");
+  const map={};
+  (body.results||[]).forEach(r=>{ map[r.po]=r; });
+  let hit=0;
+  FLOW.forEach(r=>{
+    const m=map[r.po_number]; if(!m) return;
+    r._sportSrc="metabase";
+    if(m.sports&&m.sports.length){ r._sports=m.sports; hit++; }
+    if(m.buckets&&m.buckets.length) r._tiers=m.buckets.map(b=>({tier:b.tier,cards:b.cards}));
+    if(!r.cards&&m.total) r.cards=m.total;
+    r._released=m.released; r._notReleased=m.not_released;
+    SPORT_CACHE[r.po_number]={sports:m.sports,total:m.total,at:Date.now()};
+  });
+  store.set(K_SPORTS,SPORT_CACHE);
+  persistFlow(); renderFlow();
+  return hit;
+}
+
+async function readPoSheet(po){
+  const r=FLOW.find(x=>x.po_number===po); if(!r) return;
+  r._sportErr="reading…"; renderFlow();
+  try{
+    const out=await apiGet("feed=sports&po="+encodeURIComponent(po.replace("PO-","")));
+    if(out.error){
+      if(/service account|not set/i.test(out.error)) SHEETS_OK=false;
+      throw new Error(out.error);
+    }
+    SHEETS_OK=true;
+    const list=(out.sports||[]).filter(x=>x&&x.sport);
+    if(!list.length) throw new Error("no sports found");
+    r._sports=list; r._sportErr=null;
+    if(!r.cards&&out.total) r.cards=out.total;
+    SPORT_CACHE[po]={sports:list,total:r.cards,at:Date.now()};
+    store.set(K_SPORTS,SPORT_CACHE);
+    persistFlow(); renderFlow();
+  }catch(e){
+    const unavailable = e.message==="api-missing"
+      || /service account|not set|GOOGLE_/i.test(e.message);
+    if(unavailable) SHEETS_OK=false;
+    r._sports=null;
+    r._sportErr = unavailable ? "—" : e.message;
+    renderFlow();
+  }
+}
+
+function renderFlow(){
+  const cats=[...new Set(FLOW.map(r=>r.category).filter(Boolean))].sort();
+  const keep=$("#flowCat").value;
+  $("#flowCat").innerHTML=`<option value="all">All categories</option>`+cats.map(c=>`<option${c===keep?" selected":""}>${esc(c)}</option>`).join("");
+
+  const rows=flowFiltered(), today=new Date();
+  const inb=rows.filter(r=>r.stage==="Inbound"), wip=rows.filter(r=>r.stage==="WIP");
+  const sum=(a,k)=>a.reduce((s,r)=>s+num(r[k]),0);
+  const late=inb.filter(r=>{const e=D(r.eta);return e&&e<today;});
+  const ages=wip.map(r=>daysBetween(D(r.received_date),today)).filter(v=>v!==null);
+  const week=inb.filter(r=>{const e=D(r.eta),d=daysBetween(today,e);return d!==null&&d>=0&&d<=7;});
+
+  $("#flowTotals").innerHTML=`
+    <div class="tot"><div class="k">INBOUND CARDS</div><div class="v">${fmt(sum(inb,"cards"))}</div><div class="s">${inb.length} purchase orders in transit</div></div>
+    <div class="tot"><div class="k">INBOUND COST</div><div class="v gold">$${fmt(sum(inb,"cost"))}</div><div class="s">${fmt(sum(week,"cards"))} cards land within 7 days</div></div>
+    <div class="tot"><div class="k">WIP CARDS</div><div class="v">${fmt(sum(wip,"cards"))}</div><div class="s">${wip.length} purchase orders in hand</div></div>
+    <div class="tot"><div class="k">WIP COST</div><div class="v gold">$${fmt(sum(wip,"cost"))}</div><div class="s">sitting in the building</div></div>
+    <div class="tot"><div class="k">OLDEST WIP</div><div class="v ${ages.length&&Math.max(...ages)>21?"red":"green"}">${ages.length?Math.max(...ages):0}d</div><div class="s">avg ${ages.length?Math.round(ages.reduce((a,b)=>a+b,0)/ages.length):0}d in process</div></div>
+    <div class="tot"><div class="k">PAST ETA</div><div class="v ${late.length?"red":"green"}">${late.length}</div><div class="s">${late.length?esc(late.map(r=>r.po_number).join(", ")):"all on schedule"}</div></div>`;
+
+  $("#inCount").textContent=`· ${inb.length}`;
+  $("#inTbl tbody").innerHTML=inb.length?inb.map(r=>{
+    const e=D(r.eta), d=daysBetween(today,e);
+    const openAge=daysBetween(D(r.ship_date),today);
+    const dl=d!==null?(d<0?`${Math.abs(d)}d late`:`${d}d`):openAge!==null?`${openAge}d`:"—";
+    return `<tr data-po="${esc(r.po_number)}">
+      <td class="pk">${esc(r.po_number||"—")} ${flagCell(r)}</td>
+      <td class="wrapcell">${sheetCell(r)}</td>
+      <td>${esc(r.vendor||"—")}</td>
+      <td class="strong">${r.cards?fmt(r.cards):"—"}</td>
+      <td>$${fmt(r.cost)}</td>
+      <td>${pkgCell(r)}</td>
+      <td class="age" style="color:${(d!==null&&d<0)||(d===null&&openAge>10)?"var(--red)":(d!==null&&d<=2)||(d===null&&openAge>5)?"var(--gold)":"var(--text)"}">${dl}</td>
+      <td class="wrapcell">${breakdownCell(r)}</td></tr>`;
+  }).join(""):`<tr><td colspan="8" class="note" style="padding:24px;text-align:left">Nothing inbound matches that filter.</td></tr>`;
+  $("#inTbl tfoot").innerHTML=inb.length?`<tr><td>TOTAL</td><td>${inb.length} POs</td><td></td><td>${fmt(sum(inb,"cards"))}</td><td>$${fmt(sum(inb,"cost"))}</td><td></td><td></td><td></td></tr>`:"";
+
+  $("#wipCount").textContent=`· ${wip.length}`;
+  $("#wipTbl tbody").innerHTML=wip.length?wip.map(r=>{
+    const a=daysBetween(D(r.received_date),today);
+    return `<tr data-po="${esc(r.po_number)}">
+      <td class="pk">${esc(r.po_number||"—")} ${flagCell(r)}</td>
+      <td class="wrapcell">${sheetCell(r)}</td>
+      <td>${esc(r.vendor||"—")}</td>
+      <td class="strong">${r.cards?fmt(r.cards):"—"}</td>
+      <td>$${fmt(r.cost)}</td>
+      <td>${esc(r.received_date||"—")}</td>
+      <td>${pkgCell(r)} ${stageCell(r)} <span class="age" style="color:${a!==null&&a>21?"var(--red)":a!==null&&a>14?"var(--gold)":"var(--green)"}">${a===null?"":"· "+a+"d"}</span></td>
+      <td class="wrapcell">${breakdownCell(r)}</td></tr>`;
+  }).join(""):`<tr><td colspan="8" class="note" style="padding:24px;text-align:left">Nothing in WIP matches that filter.</td></tr>`;
+  $("#wipTbl tfoot").innerHTML=wip.length?`<tr><td>TOTAL</td><td>${wip.length} POs</td><td></td><td>${fmt(sum(wip,"cards"))}</td><td>$${fmt(sum(wip,"cost"))}</td><td></td><td></td><td></td></tr>`:"";
+
+  $$(".read-sheet").forEach(b=>b.onclick=e=>{ e.stopPropagation(); readPoSheet(b.dataset.po); });
+  const sportTotals={};
+  rows.forEach(r=>(r._sports||[]).forEach(x=>sportTotals[x.sport]=(sportTotals[x.sport]||0)+x.cards));
+  const tierTotals={};
+  rows.forEach(r=>(r._tiers||[]).forEach(x=>tierTotals[x.tier]=(tierTotals[x.tier]||0)+x.cards));
+  const tt=Object.entries(tierTotals).sort((a,b)=>b[1]-a[1]);
+  const st=Object.entries(sportTotals).sort((a,b)=>b[1]-a[1]);
+  $("#sportSummary").innerHTML=st.length
+    ? `<span class="note">Cards by sport across the POs read so far:</span> `
+      +st.map(([k,v])=>`<span class="chip s3">${icon(k)} ${esc(k)} ${fmt(v)}</span>`).join("")
+      +(tt.length?`<span class="note" style="margin:0 8px 0 16px">by tier:</span> `+tt.map(([k,v])=>`<span class="chip s2">${esc(k)} ${fmt(v)}</span>`).join(""):"")
+    : `<span class="note">Sport counts read automatically from each PO's buying sheet over your Google Drive connection, once per PO.</span>`;
+
+  $("#pillIn").textContent=inb.length;
+  $("#pillWip").textContent=wip.length;
+  $("#flowCount").textContent=FLOW.filter(r=>r.stage!=="Duplicates").length;
+  applySec();
+}
+let flowSec="inbound";
+$$(".pill-btn").forEach(b=>b.onclick=()=>{
+  flowSec=b.dataset.sec;
+  $$(".pill-btn").forEach(x=>x.classList.toggle("on",x===b));
+  applySec();
+});
+function applySec(){
+  $("#secInbound").classList.toggle("hidden",flowSec!=="inbound");
+  $("#secWip").classList.toggle("hidden",flowSec!=="wip");
+}
+
+let autoRunning=false, autoAbort=false;
+async function autoPullSports(){
+  if(autoRunning) return;
+  // Anything Metabase couldn't answer — inbound POs have no warehouse cards yet,
+  // so their sport split can only come from the vendor's buying sheet.
+  const queue=FLOW.filter(r=>r.stage==="Inbound"&&!r._sports&&!(r._sportErr&&r._tried));
+  if(!queue.length) return;
+  if(SHEETS_OK===false){ setInboundNote(queue.length,"needs the service account"); return; }
+
+  autoRunning=true;
+  const total=queue.length;
+  let done=0, failed=0;
+  while(queue.length&&SHEETS_OK!==false){
+    const r=queue.shift(); r._tried=true;
+    setPullStatus(`Reading inbound buying sheets — ${done+failed+1} of ${total}…`);
+    await readPoSheet(r.po_number);
+    if(r._sports){ r._sportSrc="sheet"; done++; } else failed++;
+    if(queue.length) await sleep(400);
+  }
+  autoRunning=false;
+
+  if(SHEETS_OK===false){ setInboundNote(total-done,"needs the service account"); return; }
+  setPullStatus(done
+    ? `Inbound sports from the buying sheets for ${done} PO${done===1?"":"s"}${failed?` · ${failed} unreadable`:""}.`
+    : `Inbound buying sheets unreadable${failed?" ("+failed+" tried)":""}.`);
+  renderFlow();
+}
+
+function setInboundNote(n,why){
+  const prev=$("#pullStatus").textContent.replace(/Reading inbound buying sheets[^.]*…\s*/,"").trim();
+  const note=`${n} inbound PO${n===1?"":"s"} without sports — ${why}.`;
+  $("#pullStatus").textContent=prev&&!/inbound PO/.test(prev)?`${prev} ${note}`:note;
+}
+
+function setPullStatus(msg){
+  const el=$("#pullStatus"); if(el) el.textContent=msg;
+}
+
+$("#readAll").onclick=async ()=>{
+  autoAbort=false;
+  SHEETS_OK=null;
+  try{
+    const n=await loadSportsFromMetabase();
+    setPullStatus(n?`WIP sports from Metabase for ${n} PO${n===1?"":"s"}.`:"No warehouse cards matched these POs.");
+  }catch(e){ setPullStatus(`Metabase: ${e.message}`); }
+  FLOW.forEach(r=>{ if(!r._sports){ r._tried=false; r._sportErr=null; } });
+  await autoPullSports();
+  return;
+  FLOW.forEach(r=>{ if(!r._sports){ r._tried=false; r._sportErr=null; } });
+  autoPullSports();
+};
+$("#flowSearch").oninput=renderFlow;
+$("#flowCat").onchange=renderFlow;
+$("#exportFlow").onclick=()=>{
+  const want=flowSec==="wip"?"WIP":"Inbound";
+  const rows=flowFiltered().filter(r=>r.stage===want);
+  if(!rows.length) return toast("Nothing to export",true);
+  const cols=["stage","po_number","vendor","category","cards","cost","ship_date","eta","carrier","tracking","received_date","stage_name","owner","notes"];
+  const csv=[cols,...rows.map(r=>cols.map(c=>r[c]??""))].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download=`${want.toLowerCase()}.csv`; a.click(); toast("CSV exported");
+};
+
+/* ================= DUPLICATES ================= */
+const dupParams=()=>{
+  const v=id=>($("#"+id)?$("#"+id).value.trim():"");
+  const p=new URLSearchParams();
+  const map={sport:"dSport",set:"dSet",player:"dPlayer",parallel:"dParallel",
+             tag:"dTag",company:"dCompany",grade:"dGrade",min:"dMin",max:"dMax"};
+  Object.entries(map).forEach(([k,id])=>{ const val=v(id); if(val) p.set(k,val); });
+  return p;
+};
+
+function thumb(url){
+  return url ? `<img class="slab" src="${esc(url)}" alt="" loading="lazy" data-full="${esc(url)}">` : "";
+}
+
+/** Click any slab to see it full size. */
+document.addEventListener("click",e=>{
+  const img=e.target.closest("img.slab");
+  const box=$("#lightbox");
+  if(img){ $("#lightboxImg").src=img.dataset.full; box.classList.add("on"); return; }
+  if(box&&box.classList.contains("on")) box.classList.remove("on");
+});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&$("#lightbox")) $("#lightbox").classList.remove("on");
+});
+
+function fillList(id,values){
+  const el=$("#"+id); if(!el) return;
+  el.innerHTML=(values||[]).slice(0,2000).map(v=>`<option value="${esc(v)}">`).join("");
+}
+
+function fillSelect(id,values,keep){
+  const el=$("#"+id); if(!el) return;
+  el.innerHTML=`<option value="">Any</option>`+values.map(v=>
+    `<option${String(v)===String(keep)?" selected":""}>${esc(v)}</option>`).join("");
+}
+
+async function loadDuplicates(){
+  const p=dupParams();
+  $("#dupSrc").textContent="loading…";
+  try{
+    const res=await fetch("/api/duplicates?"+p.toString());
+    const body=await res.json().catch(()=>({ok:false,error:`HTTP ${res.status}`}));
+    if(!body.ok) throw new Error(body.error||"duplicates unavailable");
+
+    fillList("dSportList",body.facets.sport);
+    fillList("dCompanyList",body.facets.grading_company);
+    fillList("dGradeList",body.facets.grade);
+    fillList("dTagList",body.facets.tag);
+    fillList("dSetList",body.facets.set_name||[]);
+    fillList("dPlayerList",body.facets.player_name||[]);
+    fillList("dParallelList",body.facets.parallel_name||[]);
+
+    DUPES=body.rows||[];
+    DUP_TOTAL=body.total||0; DUP_MATCHED=body.matched||0;
+    $("#dupSrc").textContent=`question 36730 · ${fmt(body.total)} rows`;
+    renderDupTotals(body);
+    renderDup();
+  }catch(e){
+    $("#dupSrc").textContent=e.message;
+    renderDup();
+  }
+}
+
+let DUPES=[], DUP_TOTAL=0, DUP_MATCHED=0;
+
+function renderDupTotals(body){
+  const rows=DUPES;
+  const deep=rows.filter(r=>r.total_duplicates>=10).length;
+  const top=rows[0];
+  $("#dupTotals").innerHTML=`
+    <div class="tot"><div class="k">MATCHING CARDS</div><div class="v">${fmt(body?body.matched:rows.length)}</div><div class="s">of ${fmt(body?body.total:rows.length)} tracked</div></div>
+    <div class="tot"><div class="k">TOTAL COPIES</div><div class="v">${fmt(body?body.copies:0)}</div><div class="s">across the matches</div></div>
+    <div class="tot"><div class="k">EXPOSURE</div><div class="v gold">$${fmt(Math.round(body?body.value:0))}</div><div class="s">copies × avg value</div></div>
+    <div class="tot"><div class="k">10+ DEEP</div><div class="v ${deep?"red":"green"}">${fmt(deep)}</div><div class="s">${deep?"stop buying these":"none stacked deep"}</div></div>
+    <div class="tot"><div class="k">DEEPEST STACK</div><div class="v">${top?fmt(top.total_duplicates):0}</div><div class="s">${top?esc([top.player_name,top.set_number].filter(Boolean).join(" ")):"—"}</div></div>
+    <div class="tot"><div class="k">SHOWING</div><div class="v">${fmt(rows.length)}</div><div class="s">top rows by copies</div></div>`;
+}
+
+function renderDup(){
+  const rows=DUPES;
+  $("#dupCount").textContent=`· ${fmt(rows.length)}`;
+  $("#dupTbl tbody").innerHTML=rows.length?rows.map(r=>{
+    const expo=r.total_duplicates*r.avg_estimated_value;
+    const deep=r.total_duplicates>=10;
+    return `<tr>
+      <td class="thumb">${thumb(r.image)}</td>
+      <td>${esc(r.year||"—")}</td>
+      <td class="wrapcell">${esc(r.set_name||"—")}</td>
+      <td>${esc(r.insert||"—")}</td>
+      <td class="wrapcell">${esc(r.player_name||"—")}</td>
+      <td>${esc(r.set_number||"—")}</td>
+      <td>${esc(r.parallel_name||"—")}${r.parallel_total?` <span class="note">/${esc(r.parallel_total)}</span>`:""}</td>
+      <td>${esc([r.grading_company,r.grade].filter(Boolean).join(" ").toUpperCase())||"—"}</td>
+      <td>${r.tag?`<span class="chip">${esc(r.tag)}</span>`:"—"}</td>
+      <td class="strong" style="color:${deep?"var(--red)":"var(--text)"}">${fmt(r.total_duplicates)}</td>
+      <td>$${fmt(r.avg_estimated_value)}</td>
+      <td class="strong" style="color:var(--gold)">$${fmt(Math.round(expo))}</td>
+      <td style="color:var(--muted)">${esc(r.ac_number||"—")}</td></tr>`;
+  }).join(""):`<tr><td colspan="13" class="note" style="padding:24px;text-align:left">No duplicates match these filters.</td></tr>`;
+
+  const copies=rows.reduce((s,r)=>s+r.total_duplicates,0);
+  const expo=rows.reduce((s,r)=>s+r.total_duplicates*r.avg_estimated_value,0);
+  $("#dupTbl tfoot").innerHTML=rows.length?`<tr>
+    <td></td><td>TOTAL</td><td>${fmt(rows.length)} cards</td><td></td><td></td><td></td><td></td><td></td><td></td>
+    <td>${fmt(copies)}</td><td></td><td>$${fmt(Math.round(expo))}</td><td></td></tr>`:"";
+  $("#dupTabCount").textContent = (DUP_TOTAL&&DUP_MATCHED!==DUP_TOTAL)
+    ? `${fmt(DUP_MATCHED)} / ${fmt(DUP_TOTAL)}`
+    : fmt(DUP_TOTAL||rows.length);
+  syncDupLink();
+}
+
+const DUP_FIELDS={sport:"dSport",set:"dSet",player:"dPlayer",parallel:"dParallel",
+  tag:"dTag",company:"dCompany",grade:"dGrade",min:"dMin",max:"dMax"};
+function syncDupLink(){
+  const a=$("#dMetabase"); if(a) a.href=metabaseUrl(36730,DUP_FIELDS);
+}
+$("#dApply").onclick=()=>{ syncDupLink(); loadDuplicates(); };
+$("#dClear").onclick=()=>{
+  ["dSport","dSet","dPlayer","dParallel","dTag","dCompany","dGrade","dMin","dMax"]
+    .forEach(id=>{ if($("#"+id)) $("#"+id).value=""; });
+  loadDuplicates();
+};
+["dSport","dSet","dPlayer","dParallel","dTag","dCompany","dGrade","dMin","dMax"].forEach(id=>{
+  const el=$("#"+id); if(!el) return;
+  el.addEventListener("change",loadDuplicates);
+  el.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); loadDuplicates(); } });
+  el.addEventListener("paste",()=>setTimeout(loadDuplicates,60));
+});
+$("#exportDup").onclick=()=>{
+  if(!DUPES.length) return toast("Nothing to export",true);
+  const cols=["year","set_name","insert","player_name","set_number","parallel_name","parallel_total",
+              "grading_company","grade","tag","sport","total_duplicates","avg_estimated_value","ac_number"];
+  const csv=[cols,...DUPES.map(r=>cols.map(c=>r[c]??""))]
+    .map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download="duplicates.csv"; a.click(); toast("CSV exported");
+};
+
+/* ================= WAREHOUSE ================= */
+let WHOUSE=[];
+const WH_FIELDS={sport:"wSport",tag:"wTag",cert:"wCert",ac:"wAc",po:"wPo",set:"wSet",
+                 player:"wPlayer",parallel:"wParallel",company:"wCompany",grade:"wGrade",
+                 min:"wMin",max:"wMax"};
+
+async function loadWarehouse(){
+  const p=new URLSearchParams();
+  Object.entries(WH_FIELDS).forEach(([k,id])=>{
+    const v=$("#"+id)?$("#"+id).value.trim():""; if(v) p.set(k,v);
+  });
+  $("#whSrc").textContent="loading…";
+  try{
+    const res=await fetch("/api/warehouse?"+p.toString());
+    const body=await res.json().catch(()=>({ok:false,error:`HTTP ${res.status}`}));
+    if(!body.ok) throw new Error(body.error||"warehouse unavailable");
+
+    fillList("wSportList",body.facets.sport);
+    fillList("wTagList",body.facets.tag);
+    fillList("wCompanyList",body.facets.grading_company);
+    fillList("wGradeList",body.facets.grade);
+    fillList("wSetList",body.facets.set_name||[]);
+    fillList("wPlayerList",body.facets.player_name||[]);
+    fillList("wParallelList",body.facets.parallel_name||[]);
+
+    WHOUSE=body.rows||[];
+    $("#whSrc").textContent=`question 4131 · ${fmt(body.total)} cards`;
+    renderWarehouse(body);
+  }catch(e){
+    $("#whSrc").textContent=e.message;
+    WHOUSE=[]; renderWarehouse(null);
+  }
+}
+
+function renderWarehouse(body){
+  const rows=WHOUSE;
+  const bySport={}, byTag={};
+  rows.forEach(r=>{
+    if(r.sport) bySport[r.sport]=(bySport[r.sport]||0)+1;
+    if(r.tag) byTag[r.tag]=(byTag[r.tag]||0)+1;
+  });
+  const topSport=Object.entries(bySport).sort((a,b)=>b[1]-a[1])[0];
+  const topTag=Object.entries(byTag).sort((a,b)=>b[1]-a[1])[0];
+  const pos=new Set(rows.map(r=>r.po_number).filter(Boolean));
+
+  $("#whTotals").innerHTML=`
+    <div class="tot"><div class="k">MATCHING CARDS</div><div class="v">${fmt(body?body.matched:0)}</div><div class="s">of ${fmt(body?body.total:0)} in the warehouse</div></div>
+    <div class="tot"><div class="k">ESTIMATED VALUE</div><div class="v gold">$${fmt(Math.round(body?body.value:0))}</div><div class="s">across the matches</div></div>
+    <div class="tot"><div class="k">PURCHASE ORDERS</div><div class="v">${fmt(pos.size)}</div><div class="s">represented here</div></div>
+    <div class="tot"><div class="k">TOP SPORT</div><div class="v">${topSport?fmt(topSport[1]):0}</div><div class="s">${topSport?esc(topSport[0]):"—"}</div></div>
+    <div class="tot"><div class="k">TOP TAG</div><div class="v gold">${topTag?fmt(topTag[1]):0}</div><div class="s">${topTag?esc(topTag[0]):"—"}</div></div>
+    <div class="tot"><div class="k">SHOWING</div><div class="v">${fmt(rows.length)}</div><div class="s">top rows by value</div></div>`;
+
+  $("#whCount").textContent=`· ${fmt(rows.length)}`;
+  $("#whTbl tbody").innerHTML=rows.length?rows.map(r=>`
+    <tr>
+      <td class="thumb">${thumb(r.image)}</td>
+      <td class="pk">${esc(r.po_number||"—")}</td>
+      <td>${r.tag?`<span class="chip">${esc(r.tag)}</span>`:"—"}</td>
+      <td class="catname">${icon(r.sport)} ${esc(r.sport||"—")}</td>
+      <td>${esc(r.cert_number||"—")}</td>
+      <td>${esc(r.ac_number||"—")}</td>
+      <td>${esc(r.grade||r.grading_company||"—")}</td>
+      <td class="wrapcell">${esc(r.set_name||"—")}</td>
+      <td>${esc(r.insert||"—")}</td>
+      <td class="wrapcell">${esc(r.player_name||"—")}</td>
+      <td>${esc(r.parallel_name||"—")}${r.parallel_total?` <span class="note">/${esc(r.parallel_total)}</span>`:""}</td>
+      <td class="strong">$${fmt(r.estimated_value)}</td>
+    </tr>`).join(""):`<tr><td colspan="12" class="note" style="padding:24px;text-align:left">No warehouse cards match these filters.</td></tr>`;
+
+  $("#whTbl tfoot").innerHTML=rows.length?`<tr>
+    <td></td><td>TOTAL</td><td>${fmt(rows.length)} cards</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+    <td>$${fmt(Math.round(rows.reduce((s,r)=>s+r.estimated_value,0)))}</td></tr>`:"";
+  const total=body?body.total:0, matched=body?body.matched:0;
+  $("#whTabCount").textContent = (body&&matched!==total)
+    ? `${fmt(matched)} / ${fmt(total)}`
+    : fmt(total);
+  const pasted=Object.values(WH_FIELDS).reduce((n,id)=>{
+    const v=$("#"+id)?$("#"+id).value.trim():""; if(!v) return n;
+    const parts=v.split(/[,\n\r\t;]+/).filter(Boolean).length;
+    return n+(parts>1?parts:0);
+  },0);
+  syncWhLink();
+  $("#wHint").textContent=pasted
+    ? `${pasted} values pasted across the filters.`
+    : "Any field takes a pasted list — commas or one per line.";
+}
+
+function syncWhLink(){
+  const a=$("#wMetabase"); if(a) a.href=metabaseUrl(4131,WH_FIELDS);
+}
+$("#wApply").onclick=()=>{ syncWhLink(); loadWarehouse(); };
+$("#wClear").onclick=()=>{
+  Object.values(WH_FIELDS).forEach(id=>{ if($("#"+id)) $("#"+id).value=""; });
+  loadWarehouse();
+};
+Object.values(WH_FIELDS).forEach(id=>{
+  const el=$("#"+id); if(!el) return;
+  el.addEventListener("change",loadWarehouse);
+  el.addEventListener("keydown",e=>{
+    if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); loadWarehouse(); }
+  });
+  // a pasted column lands as one value per line — apply straight away
+  el.addEventListener("paste",()=>setTimeout(loadWarehouse,60));
+});
+$("#wExport").onclick=()=>{
+  if(!WHOUSE.length) return toast("Nothing to export",true);
+  const cols=["po_number","tag","sport","cert_number","ac_number","grading_company","grade",
+              "set_name","insert","player_name","parallel_name","parallel_total","estimated_value"];
+  const csv=[cols,...WHOUSE.map(r=>cols.map(c=>r[c]??""))]
+    .map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download="warehouse-cards.csv"; a.click(); toast("CSV exported");
+};
+
+/* ---- google sheet: one link, many tabs ---- */
+const sheetIdOf=v=>{ const m=String(v).match(/\/d\/([a-zA-Z0-9-_]+)/); return m?m[1]:String(v).trim(); };
+const gvizUrl=(id,tab)=>`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(tab)}`;
+function csvRows(text){
+  const lines=text.trim().split(/\r?\n/).filter(Boolean);
+  const split=l=>{const out=[];let cur="",q=false;
+    for(let i=0;i<l.length;i++){const c=l[i];
+      if(c==='"'){ if(q&&l[i+1]==='"'){cur+='"';i++;} else q=!q; }
+      else if(c===","&&!q){out.push(cur);cur="";} else cur+=c;}
+    out.push(cur);return out.map(x=>x.trim());};
+  return lines.map(split);
+}
+const gvizHtml=(id,tab)=>`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:html&headers=1&sheet=${encodeURIComponent(tab)}`;
+function unwrapGoogleLink(u){
+  try{ const url=new URL(u,"https://docs.google.com");
+    if(url.hostname.endsWith("google.com")&&url.pathname==="/url"&&url.searchParams.get("q")) return url.searchParams.get("q");
+    return url.href; }catch(e){ return u; }
+}
+async function fetchLinks(id,tab,colName){
+  try{
+    const res=await fetch(gvizHtml(id,tab)); if(!res.ok) return [];
+    const doc=new DOMParser().parseFromString(await res.text(),"text/html");
+    const rows=[...doc.querySelectorAll("table tr")];
+    if(!rows.length) return [];
+    const heads=[...rows[0].children].map(td=>td.textContent.trim().toLowerCase());
+    let idx=heads.findIndex(h=>h.includes(colName));
+    return rows.slice(1).map(tr=>{
+      const cell=idx>=0?tr.children[idx]:null;
+      const a=cell?cell.querySelector("a"):tr.querySelector("a");
+      return a?unwrapGoogleLink(a.getAttribute("href")):"";
+    });
+  }catch(e){ return []; }
+}
+async function fetchTabRaw(id,tab){
+  const res=await fetch(gvizUrl(id,tab));
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const text=await res.text();
+  if(/^\s*</.test(text)) throw new Error("not shared publicly");
+  const grid=csvRows(text);
+  if(grid.length<2) throw new Error("no rows");
+  return {heads:grid[0], body:grid.slice(1)};
+}
+function classify(heads){
+  const h=heads.map(x=>String(x).toLowerCase().replace(/[_\s]+/g," "));
+  const has=(...names)=>names.some(n=>h.some(x=>x.includes(n)));
+  if(has("sports")&&(has("po")||has("po #"))) return "posports";
+  if((has("po #")||has("po number"))&&(has("rcvd pkgs")||has("total pkgs")||has("received"))) return "dashboard";
+  if(has("date rcv","rcv'd","date proc")||(has("sheet cost")&&has("po"))) return "orders";
+  if(has("copies","dupes","duplicate")) return "duplicates";
+  if(has("eta","expected arrival")||(has("ship")&&!has("received"))) return "inbound";
+  if(has("received","stage","wip")) return "wip";
+  if(has("current inventory","inventory","doi","daily output")) return "category";
+  return "unknown";
+}
+function rowsFrom(raw,mapper,extra){
+  return raw.body.map(cells=>{
+    const o={}; raw.heads.forEach((hd,i)=>o[mapper(hd)]=cells[i]??"");
+    Object.assign(o,extra||{}); return o;
+  });
+}
+function parseDateLoose(v){
+  const t=String(v||"").trim(); if(!t) return null;
+  let m=t.match(/^(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?$/);
+  if(m){ const y=m[3]?(m[3].length===2?2000+ +m[3]:+m[3]):new Date().getFullYear();
+    const d=new Date(y,+m[1]-1,+m[2]); return isNaN(d)?null:d; }
+  const d=new Date(t); return isNaN(d)?null:d;
+}
+const iso=d=>d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`:"";
+const carrierOf=t=>{const x=String(t||"");return /^1Z/i.test(x)?"UPS":/^\d{12}$|^\d{15}$/.test(x.replace(/\s/g,""))?"FedEx":/^9\d{15,}/.test(x.replace(/\s/g,""))?"USPS":x?"—":"";};
+var DASH_COLS={po:0,vendor:1,cards:2,tracking:3,pkgTotal:4,pkgRcvd:5,firstRcvd:6,
+  received:7,rcvdTs:8,rcvdBy:9,verified:10,damage:13,shipped:16,complete:19,flag:23,notes:24};
+const isTrue=v=>v===true||/^true$/i.test(String(v||"").trim());
+function unpackSports(str){
+  return String(str||"").split("|").filter(Boolean).map(part=>{
+    const i=part.lastIndexOf(":");
+    return i<0?null:{sport:part.slice(0,i).trim(), cards:num(part.slice(i+1))};
+  }).filter(Boolean).sort((a,b)=>b.cards-a.cards);
+}
+function parsePoSports(raw){
+  const h=raw.heads.map(x=>String(x).toLowerCase().trim());
+  const iPo=h.findIndex(x=>x.startsWith("po")), iTot=h.findIndex(x=>x.includes("total")),
+        iSp=h.findIndex(x=>x.includes("sport")), iTi=h.findIndex(x=>x.includes("tier"));
+  const out={};
+  raw.body.forEach(c=>{
+    const po=String(c[iPo]||"").trim(); if(!po) return;
+    out["PO-"+po]={ cards:num(c[iTot]),
+      sports:unpackSports(c[iSp]),
+      tiers:iTi>=0?unpackSports(c[iTi]).map(x=>({tier:x.sport,cards:x.cards})):null };
+  });
+  return out;
+}
+function parseDashboard(raw){
+  const C=DASH_COLS, out=[];
+  raw.body.forEach(cells=>{
+    const po=String(cells[C.po]||"").trim();
+    if(!po||/^po\b/i.test(po)) return;                    // skip the sub-header row
+    if(isTrue(cells[C.complete])) return;                  // finished
+    const received=isTrue(cells[C.received]);
+    const stage_name = !received ? "Awaiting delivery"
+      : isTrue(cells[C.shipped])  ? "Shipment / RMS"
+      : isTrue(cells[C.damage])   ? "Damage logged"
+      : isTrue(cells[C.verified]) ? "Verified" : "Intake";
+    const rcvd=parseDateLoose(cells[C.rcvdTs])||parseDateLoose(cells[C.firstRcvd]);
+    out.push({
+      po_number:"PO-"+po, vendor:String(cells[C.vendor]||"").trim()||"—",
+      cards:num(cells[C.cards]), cost:0,
+      tracking:String(cells[C.tracking]||"").trim(),
+      pkg_total:num(cells[C.pkgTotal]), pkg_received:num(cells[C.pkgRcvd]),
+      flag:String(cells[C.flag]||"").trim(), notes:String(cells[C.notes]||"").trim(),
+      sheet_name:"PO "+po, sheet_url:"",
+      stage: received?"WIP":"Inbound", stage_name,
+      received_date: rcvd?iso(rcvd):"",
+      ship_date: parseDateLoose(cells[C.firstRcvd])?iso(parseDateLoose(cells[C.firstRcvd])):"",
+      eta:"", carrier:carrierOf(cells[C.tracking])
+    });
+  });
+  return out;
+}
+function parseOrders(raw){
+  const seen={}, cols=raw.heads.map(hd=>{
+    const k=String(hd).trim().toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+    seen[k]=(seen[k]||0)+1; return seen[k]>1?k+" "+seen[k]:k;
+  });
+  const at=(cells,...names)=>{
+    for(const n of names){ const i=cols.indexOf(n); if(i>=0 && String(cells[i]??"").trim()!=="") return String(cells[i]).trim(); }
+    return "";
+  };
+  const out=[];
+  raw.body.forEach((cells,ri)=>{
+    const po=at(cells,"po"), vendor=at(cells,"po 2");
+    const cost=at(cells,"cost","sheet cost"), cards=at(cells,"total","card count");
+    if(!po||(!vendor&&!cost)) return;
+    const rcv=parseDateLoose(at(cells,"date rcv d","date rcv","date rcvd"));
+    const added=parseDateLoose(at(cells,"added stamp"));
+    const track=at(cells,"track");
+    const row={
+      po_number:"PO-"+po, vendor:vendor||"—", category:"",
+      cards:/^n\/?a$/i.test(cards)?0:num(cards), cost:num(cost),
+      tracking:track, sheet_name:at(cells,"sheet"), sheet_url:"", owner:at(cells,"priority")||"",
+      date_rcvd: rcv?iso(rcv):"", stage: rcv?"WIP":"Inbound"
+    };
+    if(rcv){ row.received_date=iso(rcv); row.stage_name="In process"; }
+    else { row.ship_date=iso(added); row.eta=""; row.carrier=carrierOf(track); }
+    row._i=ri; out.push(row);
+  });
+  return out;
+}
+$("#toggleSheet").onclick=()=>$("#sheetPanel").classList.toggle("hidden");
+$("#closeSheet").onclick=()=>$("#sheetPanel").classList.add("hidden");
+$("#connectSheet").onclick=async ()=>{
+  const id=sheetIdOf($("#sheetId").value);
+  if(!id) return toast("Paste the spreadsheet URL first",true);
+  const tabs=$("#tabList").value.split(/[,\n]/).map(t=>t.trim()).filter(Boolean);
+  if(!tabs.length) return toast("List at least one tab name",true);
+  $("#sheetStatus").textContent="Reading tabs…"; $("#sheetResult").innerHTML="";
+
+  const results=await Promise.all(tabs.map(async t=>{
+    try{ const raw=await fetchTabRaw(id,t); return {tab:t,kind:classify(raw.heads),raw,n:raw.body.length}; }
+    catch(e){ return {tab:t,kind:"error",err:e.message,n:0}; }
+  }));
+
+  const newRows=[], newFlow=[];
+  results.forEach(r=>{
+    if(r.kind==="category") newRows.push(...rowsFrom(r.raw,canon,{category:r.tab}));
+    else if(r.kind==="inbound") newFlow.push(...rowsFrom(r.raw,fcanon,{stage:"Inbound"}));
+    else if(r.kind==="wip") newFlow.push(...rowsFrom(r.raw,fcanon,{stage:"WIP"}));
+    else if(r.kind==="duplicates") newFlow.push(...rowsFrom(r.raw,fcanon,{stage:"Duplicates"}));
+    else if(r.kind==="posports"){ r.sports=parsePoSports(r.raw); r.n=Object.keys(r.sports).length; }
+    else if(r.kind==="dashboard"){ r.dash=parseDashboard(r.raw); r.n=r.dash.length; }
+    else if(r.kind==="orders"){ r.orders=parseOrders(r.raw); r.n=r.orders.length; }
+  });
+
+  const sportMap={};
+  results.filter(r=>r.kind==="posports").forEach(r=>Object.assign(sportMap,r.sports));
+  const applySports=o=>{
+    const m=sportMap[o.po_number]; if(!m) return;
+    if(m.cards) o.cards=m.cards;
+    if(m.sports&&m.sports.length) o._sports=m.sports;
+    if(m.tiers&&m.tiers.length) o._tiers=m.tiers;
+  };
+  const dashTabs=results.filter(r=>r.kind==="dashboard");
+  const orderTabs=results.filter(r=>r.kind==="orders");
+
+  if(dashTabs.length){
+    // Order List supplies cost and the sheet name; the Dashboard supplies stage.
+    const meta={};
+    orderTabs.forEach(r=>(r.orders||[]).forEach(o=>{ meta[o.po_number]={cost:o.cost, sheet_name:o.sheet_name}; }));
+    dashTabs.forEach(r=>{
+      r.dash.forEach(o=>{
+        const m=meta[o.po_number];
+        if(m){ o.cost=m.cost||0; if(m.sheet_name) o.sheet_name=m.sheet_name; }
+      });
+      r.dash.forEach(applySports);
+      newFlow.push(...r.dash);
+    });
+    orderTabs.forEach(r=>{ r.kind="orders-merged"; r.n=r.orders.length; });
+  }
+  for(const r of (dashTabs.length?[]:orderTabs)){
+    const links=await fetchLinks(id,r.tab,"sheet");
+    if(links.length) r.orders.forEach(o=>{ if(o._i!==undefined && links[o._i]) o.sheet_url=links[o._i]; });
+    r.orders.forEach(applySports);
+    r.linked=r.orders.filter(o=>o.sheet_url).length;
+    newFlow.push(...r.orders);
+  }
+
+  $("#sheetResult").innerHTML=`<table><thead><tr><th style="text-align:left">TAB</th><th style="text-align:left">READ AS</th><th style="text-align:right">ROWS</th><th style="text-align:left">RESULT</th></tr></thead><tbody>${
+    results.map(r=>`<tr>
+      <td style="text-align:left">${esc(r.tab)}</td>
+      <td style="text-align:left">${r.kind==="error"?'<span class="chip">SKIPPED</span>':r.kind==="unknown"?'<span class="chip s2">UNRECOGNIZED</span>':`<span class="chip s3">${r.kind.toUpperCase()}</span>`}</td>
+      <td>${r.kind==="error"||r.kind==="unknown"?"—":fmt(r.n)}</td>
+      <td style="text-align:left;color:var(--muted)">${r.kind==="error"?esc(r.err):r.kind==="unknown"?"columns didn't match a known shape":r.kind==="posports"?"total cards + sport split per PO"
+        :r.kind==="dashboard"?"open POs · received = WIP, unreceived = inbound"
+        :r.kind==="orders-merged"?"used for cost and sheet names"
+        :r.kind==="orders"?`received date = WIP, blank = inbound · ${r.linked||0} rows had a sheet link`:"loaded"}</td>
+    </tr>`).join("")}</tbody></table>`;
+
+  if(!newRows.length&&!newFlow.length){
+    $("#sheetStatus").textContent="Nothing loaded. Check the sharing setting and the tab names, or paste the rows below.";
+    return toast("Sheet connection failed",true);
+  }
+  if(newRows.length){ ROWS=newRows; normalize(); persist(); $("#src").textContent="google sheet"; renderOverview(); if(current) renderDetail(); }
+  if(newFlow.length){ FLOW=newFlow; normFlow(); persistFlow(); renderFlow(); renderDup(); }
+  const cats=[...new Set(newRows.map(r=>r.category))];
+  $("#sheetStatus").textContent=`Connected · ${newRows.length} inventory rows across ${cats.length} categories, ${newFlow.length} inbound/WIP/duplicate rows.`;
+  toast("Sheet connected");
+};
+
+function readFlowInput(){
+  const raw=$("#flowIn").value.trim();
+  if(!raw){ toast("Paste some rows first",true); return null; }
+  let rows;
+  try{
+    if(raw[0]==="["||raw[0]==="{"){
+      const j=JSON.parse(raw);
+      rows=(Array.isArray(j)?j:[j]).map(o=>{const n={};Object.entries(o).forEach(([k,v])=>n[fcanon(k)]=v);return n;});
+    } else {
+      const lines=raw.split(/\r?\n/).filter(Boolean);
+      const split=l=>{const out=[];let cur="",q=false;
+        for(let i=0;i<l.length;i++){const c=l[i];
+          if(c==='"'){ if(q&&l[i+1]==='"'){cur+='"';i++;} else q=!q; }
+          else if((c===","||c==="\t")&&!q){out.push(cur);cur="";} else cur+=c;}
+        out.push(cur);return out.map(x=>x.trim());};
+      const heads=split(lines[0]).map(fcanon);
+      rows=lines.slice(1).map(l=>{const cells=split(l),o={};heads.forEach((h,i)=>o[h]=cells[i]??"");return o;});
+    }
+  }catch(e){ toast("Couldn't parse that: "+e.message,true); return null; }
+  const st=$("#pasteStage").value;
+  rows.forEach(r=>{ if(!r.stage) r.stage=st; });
+  return rows;
+}
+$("#loadFlow").onclick=()=>{const r=readFlowInput();if(!r)return;FLOW=r;normFlow();persistFlow();renderFlow();toast(`Loaded ${r.length} rows`);};
+$("#appendFlow").onclick=()=>{const r=readFlowInput();if(!r)return;FLOW=FLOW.concat(r);normFlow();persistFlow();renderFlow();toast(`Added ${r.length} rows`);};
+$("#demoFlow").onclick=()=>{FLOW=JSON.parse(JSON.stringify(FLOW_DEMO));normFlow();persistFlow();renderFlow();toast("Demo data restored");};
+function persistFlow(){ store.set(K_FLOW,FLOW); }
+
+$("#demoAll").onclick=()=>{
+  ROWS=JSON.parse(JSON.stringify(DEMO)); FLOW=JSON.parse(JSON.stringify(FLOW_DEMO));
+  normalize(); normFlow(); persist(); persistFlow();
+  $("#src").textContent="order list · Sep 1"; $("#catSearch").value=""; $("#flowSearch").value="";
+  $("#flowCat").value="all"; $("#packSearch").value=""; lowMode=null;
+  $("#lowCard").classList.add("hidden");
+  if(current) $("#backBtn").click(); else renderOverview();
+  $("#dupSearch").value=""; $("#dupCat").value="all"; $("#dupMin").value="2";
+  renderFlow(); renderDup();
+  toast("Reloaded — 30 open POs, 5 real categories");
+};
+
+/* ---- page switching ---- */
+$$(".tab[data-page]").forEach(b=>b.onclick=()=>{
+  $$(".tab[data-page]").forEach(x=>x.classList.remove("on")); b.classList.add("on");
+  const pg=b.dataset.page;
+  $("#page-doi").classList.toggle("hidden",pg!=="doi");
+  $("#page-flow").classList.toggle("hidden",pg!=="flow");
+  $("#page-dup").classList.toggle("hidden",pg!=="dup");
+  $("#page-wh").classList.toggle("hidden",pg!=="wh");
+  $("#toggleData").classList.toggle("hidden",pg!=="doi");
+  if(pg==="flow"){ renderFlow(); autoPullSports(); }
+  if(pg==="dup"){ if(!DUPES.length) loadDuplicates(); else renderDup(); }
+  if(pg==="wh"){ if(!WHOUSE.length) loadWarehouse(); }
+});
+
+/* ---------- boot ---------- */
+function persist(){ store.set(K_ROWS,ROWS); }
+(async function init(){
+  ROWS=(await store.get(K_ROWS))||JSON.parse(JSON.stringify(DEMO));
+  FLOW=(await store.get(K_FLOW))||JSON.parse(JSON.stringify(FLOW_DEMO));
+  SPORT_CACHE=(await store.get(K_SPORTS))||{};
+  normalize(); normFlow(); applySportCache(); renderFlow();
+  $("#asof").textContent="as of "+new Date().toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
+  renderOverview();
+
+  try{
+    const d=await loadDoiFromMetabase();
+    if(d.problems.length) console.warn("DOI questions with problems:",d.problems);
+  }catch(e){ /* keep the bundled category data */ }
+
+  // tab counts, so the header is populated before either tab is opened
+  fetch("/api/warehouse?limit=1").then(r=>r.json()).then(b=>{
+    if(b&&b.ok) $("#whTabCount").textContent=fmt(b.total);
+  }).catch(()=>{});
+  fetch("/api/duplicates?limit=1").then(r=>r.json()).then(b=>{
+    if(b&&b.ok){ DUP_TOTAL=b.total||0; $("#dupTabCount").textContent=fmt(b.total); }
+  }).catch(()=>{});
+
+  // live POs from the Order List, sport breakdowns from Metabase
+  try{
+    const n=await loadFromApi();
+    setPullStatus(`Loaded ${n} open POs from Google Sheets.`);
+  }catch(e){
+    setPullStatus(e.message==="api-missing"
+      ? "Showing the bundled snapshot — deploy to Vercel for live POs."
+      : `Showing the bundled snapshot — ${e.message}`);
+  }
+  try{
+    const n=await loadSportsFromMetabase();
+    if(n) setPullStatus(`WIP sports from Metabase for ${n} PO${n===1?"":"s"}.`);
+  }catch(e){
+    setPullStatus(`Metabase sports unavailable — ${e.message}`);
+  }
+  await autoPullSports();          // inbound, from the buying sheets
+})();
+</script>
+</body>
+</html>
