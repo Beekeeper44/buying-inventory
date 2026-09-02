@@ -1103,17 +1103,41 @@ doi:numOrNull(r.doi), daily_output:numOrNull(r.daily_output)
   return {rows:rows.length, cats:[...new Set(rows.map(r=>r.category))].length, problems:body.problems||[]};
 }
 
+/** The pending step holding the most cards, for the WIP stage label. */
+function topPending(p){
+  if(!p) return "";
+  const best=Object.entries(p).filter(([,v])=>num(v)>0).sort((a,b)=>b[1]-a[1])[0];
+  return best ? "Pending "+best[0].replace("pending_","").replace(/_/g," ") : "";
+}
+
+let SHEETMAP={};
+
+/** Order List / Dashboard, kept only to decorate the Metabase rows. */
+async function loadSheetMeta(){
+  const body=await apiGet("feed=pos");
+  SHEETMAP={};
+  (body.orders||[]).forEach(o=>{
+    SHEETMAP[o.po_number]={
+      vendor:o.vendor||"—", cost:num(o.cost), sheet_name:o.sheet_name||"", sheet_url:o.sheet_url||"",
+      tracking:o.tracking||"", carrier:o.tracking?carrierOf(o.tracking):"",
+      pkg_total:num(o.pkg_total), pkg_received:num(o.pkg_received),
+      flag:o.flag||"", paid:!!o.paid,
+      received_date:o.date_rcvd||"", ship_date:o.first_rcvd||""
+    };
+  });
+  return Object.keys(SHEETMAP).length;
+}
+
 /**
- * Question 36763 — the STATUS column decides where a PO sits.
- * A PO with cards in two statuses appears in both sections, with the cards
- * that are actually in each. Sheet data supplies vendor, cost and sheet name.
+ * Question 36763 — the STAGE column builds the rows.
+ * Metabase is the source of truth for which POs exist and what stage they are
+ * in; the Order List only supplies vendor, cost, sheet name and packages.
  */
 async function loadWipFromMetabase(){
   const res=await fetch("/api/wip");
   const body=await res.json().catch(()=>({ok:false,error:`HTTP ${res.status}`}));
   if(!body.ok) throw new Error(body.error||"wip unavailable");
 
-  // collapse the per-status rows into one entry per PO, keeping the mix
   const byPo={};
   (body.results||[]).forEach(m=>{
     const g=byPo[m.po]||(byPo[m.po]={po:m.po,cards:0,vaulted:0,mix:{},sports:{},buckets:{},pending:{}});
@@ -1124,42 +1148,40 @@ async function loadWipFromMetabase(){
     Object.entries(m.pending||{}).forEach(([k,v])=>g.pending[k]=(g.pending[k]||0)+num(v));
   });
 
-  let hit=0;
-  FLOW.forEach(r=>{
-    if(r.stage==="Duplicates") return;
-    const g=byPo[r.po_number]; if(!g) return;
-    hit++;
-    // the biggest of the three real statuses decides the section;
-    // "Other" never claims a PO on its own — the sheet's stage stands
+  const dupes=FLOW.filter(r=>r.stage==="Duplicates");
+  const rows=[];
+  Object.values(byPo).forEach(g=>{
     const real=Object.entries(g.mix).filter(([k])=>k==="Inbound"||k==="WIP"||k==="FG")
                                     .sort((a,b)=>b[1]-a[1])[0];
-    if(real) r.stage=real[0];
-    r._other=g.mix.Other||0;
-    r._mix=g.mix;
-    r.cards=g.cards||r.cards;
-    r._vaulted=g.vaulted;
-    r._pending=g.pending;
-    r._sports=Object.entries(g.sports).map(([sport,cards])=>({sport,cards})).sort((a,b)=>b.cards-a.cards);
-    r._tiers=Object.entries(g.buckets).map(([tier,cards])=>({tier,cards})).sort((a,b)=>b.cards-a.cards);
-    if(!real&&r._other) r.stage_name="Other";
-    r.stage_name = r.stage==="FG" ? "Released"
-                 : r.stage==="Inbound" ? "Awaiting delivery"
-                 : (topPending(g.pending)||"In process");
+    if(!real) return;                       // "Other" alone is not tracked here
+    const meta=SHEETMAP[g.po]||{};
+    rows.push({
+      po_number:g.po,
+      vendor:meta.vendor||"—",
+      sheet_name:meta.sheet_name||"—",
+      sheet_url:meta.sheet_url||"",
+      cost:num(meta.cost),
+      tracking:meta.tracking||"", carrier:meta.carrier||"",
+      pkg_total:num(meta.pkg_total), pkg_received:num(meta.pkg_received),
+      flag:meta.flag||"", paid:!!meta.paid,
+      received_date:meta.received_date||"", ship_date:meta.ship_date||"", eta:"",
+      cards:g.cards,
+      stage:real[0],
+      _mix:g.mix, _other:g.mix.Other||0, _vaulted:g.vaulted, _pending:g.pending,
+      _sports:Object.entries(g.sports).map(([sport,cards])=>({sport,cards})).sort((a,b)=>b.cards-a.cards),
+      _tiers:Object.entries(g.buckets).map(([tier,cards])=>({tier,cards})).sort((a,b)=>b.cards-a.cards),
+      stage_name: real[0]==="FG" ? "Released"
+                : real[0]==="Inbound" ? "Awaiting delivery"
+                : (topPending(g.pending)||"In process")
+    });
   });
+
+  if(!rows.length) throw new Error("no POs returned");
+  FLOW=rows.concat(dupes);
   persistFlow(); renderFlow();
-  const unplaced=FLOW.filter(r=>r.stage!=="Duplicates"&&!["Inbound","WIP","FG"].includes(r.stage)).length;
-  if(unplaced) console.warn(`${unplaced} POs have no Inbound/WIP/FG status`);
-  return hit;
+  return rows.length;
 }
 
-function topPending(p){
-  if(!p) return "";
-  const best=Object.entries(p).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])[0];
-  if(!best) return "";
-  return "Pending "+best[0].replace("pending_","").replace("_"," ");
-}
-
-/** One Metabase call fills the sport breakdown for every PO. */
 async function loadSportsFromMetabase(){
   const res=await fetch("/api/sports");
   const body=await res.json().catch(()=>({ok:false,error:`HTTP ${res.status}`}));
@@ -2055,27 +2077,16 @@ function persist(){ store.set(K_ROWS,ROWS); }
     if(b&&b.ok){ DUP_TOTAL=b.total||0; $("#dupTabCount").textContent=fmt(b.total); }
   }).catch(()=>{});
 
-  // live POs from the Order List, sport breakdowns from Metabase
-  try{
-    const n=await loadFromApi();
-    setPullStatus(`Loaded ${n} open POs from Google Sheets.`);
-  }catch(e){
-    setPullStatus(e.message==="api-missing"
-      ? "Showing the bundled snapshot — deploy to Vercel for live POs."
-      : `Showing the bundled snapshot — ${e.message}`);
-  }
-  try{
-    const n=await loadWipFromMetabase();
-    if(n) setPullStatus(`Stage and sports from Metabase for ${n} PO${n===1?"":"s"}.`);
-  }catch(e){ /* fall through to the purchase_location parse */ }
+  // names and costs from the Order List, rows from Metabase
+  try{ await loadSheetMeta(); }catch(e){ /* optional */ }
 
   try{
-    const n=await loadSportsFromMetabase();
-    if(n) setPullStatus(`WIP sports from Metabase for ${n} PO${n===1?"":"s"}.`);
+    const n=await loadWipFromMetabase();
+    setPullStatus(`${fmt(n)} POs from Metabase${Object.keys(SHEETMAP).length?" · names and costs from the Order List":""}.`);
   }catch(e){
-    setPullStatus(`Metabase sports unavailable — ${e.message}`);
+    setPullStatus(`Metabase unavailable — ${e.message}. Showing the bundled snapshot.`);
   }
-  await autoPullSports();          // inbound, from the buying sheets
+
 })();
 </script>
 </body>
