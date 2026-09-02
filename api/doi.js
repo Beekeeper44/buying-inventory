@@ -95,9 +95,11 @@ async function runCard(id) {
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  const noStore = () => res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=1800');
 
   if (!HOST || !KEY) {
+    noStore();
     return res.status(200).json({ ok: false, error: 'METABASE_HOST / METABASE_API_KEY not set' });
   }
 
@@ -107,6 +109,7 @@ module.exports = async (req, res) => {
     : Object.keys(map);
 
   if (!wanted.length) {
+    noStore();
     return res.status(200).json({ ok: false, error: 'no matching category', configured: Object.keys(map) });
   }
 
@@ -120,6 +123,7 @@ module.exports = async (req, res) => {
     }
   }
 
+  if (!rows.length) noStore();
   return res.status(200).json({
     ok: rows.length > 0,
     generated: new Date().toISOString(),

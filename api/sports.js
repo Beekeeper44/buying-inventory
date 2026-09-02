@@ -113,11 +113,12 @@ function group(rows) {
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  const noStore = () => res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=900');
 
   if (!HOST || !KEY) {
-    return res.status(200).json({
-      ok: false,
+    noStore();
+    return res.status(200).json({ ok: false,
       error: 'METABASE_HOST / METABASE_API_KEY not set on this deployment'
     });
   }
@@ -144,6 +145,7 @@ module.exports = async (req, res) => {
     });
 
   } catch (e) {
+    noStore();
     return res.status(200).json({ ok: false, error: e.message || String(e) });
   }
 };

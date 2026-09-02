@@ -15,7 +15,7 @@ const HOST = (process.env.METABASE_HOST || '').replace(/\/$/, '');
 const KEY = process.env.METABASE_API_KEY || '';
 const CARD_ID = Number(process.env.WIP_QUESTION || 36763);
 
-const cache = { at: 0, rows: null, raw: null };
+const cache = { at: 0, rows: null, raw: null, groups: null };
 const TTL_MS = 5 * 60 * 1000;
 
 const num = v => {
@@ -25,49 +25,84 @@ const num = v => {
 const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const digits = s => String(s || '').replace(/\D/g, '');
 
-const KNOWN = [
-  'po', 'ponumber', 'purchaseorder',
-  'vendor', 'vendorname', 'seller',
-  'sport', 'category',
-  'cards', 'cardcount', 'totalcards', 'quantity', 'qty',
-  'stage', 'status', 'state',
-  'cost', 'value', 'estimatedvalue', 'totalvalue',
-  'received', 'receiveddate', 'daterecvd', 'datercvd', 'firstreceived',
-  'age', 'days', 'daysinprocess', 'businessdays', 'bizdays',
-  'tag', 'grade', 'gradingcompany', 'ordernumber', 'orderid'
-];
+/**
+ * Question 36763 columns:
+ *   PO_NUMBER SPORT BUCKET STATUS CARDS VAULTED
+ *   PENDING_SLABBING PENDING_ASSEMBLY PENDING_RELEASE PENDING_GRADING
+ *   PENDING_SCAN PENDING_RESCAN PENDING_DATA_ISSUE INBOUND PENDING_BOXING
+ *
+ * STATUS is authoritative: FG means finished goods — released, so no longer WIP.
+ */
+const PENDING = ['pending_scan', 'pending_grading', 'pending_slabbing', 'pending_assembly',
+                 'pending_release', 'pending_rescan', 'pending_data_issue', 'pending_boxing'];
 
 function shape(row) {
   const keys = Object.keys(row);
-  const used = new Set();
   const get = (...names) => {
     for (const n of names) {
       const k = keys.find(k => norm(k) === n);
-      if (k !== undefined && row[k] !== null && row[k] !== '') { used.add(k); return row[k]; }
+      if (k !== undefined && row[k] !== null && row[k] !== '') return row[k];
     }
     return '';
   };
-
-  const po = String(get('ponumber', 'po', 'purchaseorder') || '').trim();
   const out = {
-    po_number: po ? 'PO-' + digits(po) : '',
-    po_raw: digits(po),
-    vendor: String(get('vendor', 'vendorname', 'seller') || '').trim(),
-    sport: String(get('sport', 'category') || '').trim(),
-    cards: num(get('cards', 'cardcount', 'totalcards', 'quantity', 'qty')),
-    stage: String(get('stage', 'status', 'state') || '').trim(),
-    cost: num(get('cost', 'totalvalue', 'estimatedvalue', 'value')),
-    received: String(get('daterecvd', 'datercvd', 'receiveddate', 'firstreceived', 'received', 'processedat', 'duedate') || '').trim(),
-    age: num(get('daysinprocess', 'businessdays', 'bizdays', 'age', 'days')),
-    order_number: String(get('ordernumber', 'orderid') || '').trim(),
-    tag: String(get('tag') || '').trim()
+    po_raw: digits(get('ponumber', 'po')),
+    sport: String(get('sport') || '').trim(),
+    bucket: String(get('bucket') || '').trim(),
+    status: String(get('status') || '').trim(),
+    cards: num(get('cards')),
+    vaulted: num(get('vaulted')),
+    inbound: num(get('inbound'))
   };
-
-  // keep anything the mapping didn't claim, so nothing is silently lost
-  const extra = {};
-  keys.forEach(k => { if (!used.has(k)) extra[k] = row[k]; });
-  out.extra = extra;
+  PENDING.forEach(p => { out[p] = num(get(p.replace(/_/g, ''))); });
   return out;
+}
+
+/** One entry per PO, with its sport split and where its cards are sitting. */
+function groupByPo(rows) {
+  const by = {};
+  rows.forEach(r => {
+    if (!r.po_raw) return;
+    const key = 'PO-' + r.po_raw;
+    if (!by[key]) {
+      by[key] = { po: key, po_raw: r.po_raw, cards: 0, vaulted: 0, inbound: 0,
+                  sports: {}, buckets: {}, statuses: {}, pending: {} };
+      PENDING.forEach(p => by[key].pending[p] = 0);
+    }
+    const g = by[key];
+    g.cards += r.cards;
+    g.vaulted += r.vaulted;
+    g.inbound += r.inbound;
+    if (r.sport)  g.sports[r.sport]   = (g.sports[r.sport]   || 0) + r.cards;
+    if (r.bucket) g.buckets[r.bucket] = (g.buckets[r.bucket] || 0) + r.cards;
+    if (r.status) g.statuses[r.status] = (g.statuses[r.status] || 0) + r.cards;
+    PENDING.forEach(p => g.pending[p] += r[p]);
+  });
+
+  return Object.values(by).map(g => {
+    const st = k => g.statuses[k] || 0;
+    const fg      = st('FG');
+    const wip     = st('WIP');
+    const inbound = st('Inbound');
+    const other   = g.cards - fg - wip - inbound;
+    const pendingTotal = PENDING.reduce((s, p) => s + g.pending[p], 0);
+
+    // FG once nothing is still inbound or in process
+    const stage = (wip + inbound + pendingTotal) === 0 && fg > 0 ? 'FG'
+                : wip > 0 || pendingTotal > 0                    ? 'WIP'
+                : inbound > 0                                     ? 'Inbound'
+                : fg > 0                                          ? 'FG' : 'Other';
+
+    return {
+      po: g.po, po_raw: g.po_raw, stage,
+      cards: g.cards, vaulted: g.vaulted, fg, wip, inbound, other,
+      pending: g.pending, pending_total: pendingTotal,
+      sports: Object.entries(g.sports).map(([sport, cards]) => ({ sport, cards }))
+                    .sort((a, b) => b.cards - a.cards),
+      buckets: Object.entries(g.buckets).map(([tier, cards]) => ({ tier, cards }))
+                    .sort((a, b) => b.cards - a.cards)
+    };
+  }).sort((a, b) => b.cards - a.cards);
 }
 
 async function load() {
@@ -85,15 +120,18 @@ async function load() {
 
   cache.raw = body.slice(0, 3);
   cache.rows = body.map(shape);
+  cache.groups = groupByPo(cache.rows);
   cache.at = Date.now();
   return cache;
 }
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  const noStore = () => res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=600');
 
   if (!HOST || !KEY) {
+    noStore();
     return res.status(200).json({ ok: false, error: 'METABASE_HOST / METABASE_API_KEY not set' });
   }
 
@@ -110,38 +148,24 @@ module.exports = async (req, res) => {
     }
 
     const q = req.query;
-    const rows = c.rows.filter(r =>
-      (!q.po || digits(r.po_raw) === digits(q.po)) &&
-      (!q.sport || String(r.sport).toLowerCase().includes(String(q.sport).toLowerCase())) &&
-      (!q.vendor || String(r.vendor).toLowerCase().includes(String(q.vendor).toLowerCase()))
-    );
+    let results = c.groups;
 
-    // roll up to one entry per PO, with its sport split
-    const byPo = {};
-    rows.forEach(r => {
-      const key = r.po_number || '(no PO)';
-      if (!byPo[key]) byPo[key] = { po: key, vendor: r.vendor, cards: 0, cost: 0, stage: r.stage, received: r.received, age: r.age, sports: {} };
-      const g = byPo[key];
-      g.cards += r.cards || 1;
-      g.cost += r.cost;
-      if (!g.vendor && r.vendor) g.vendor = r.vendor;
-      if (!g.stage && r.stage) g.stage = r.stage;
-      if (!g.received && r.received) g.received = r.received;
-      if (r.sport) g.sports[r.sport] = (g.sports[r.sport] || 0) + (r.cards || 1);
-    });
+    if (q.po)    results = results.filter(r => r.po_raw === digits(q.po));
+    if (q.stage) results = results.filter(r => r.stage.toLowerCase() === String(q.stage).toLowerCase());
+    if (q.sport) results = results.filter(r => r.sports.some(s =>
+                    s.sport.toLowerCase().includes(String(q.sport).toLowerCase())));
 
-    const results = Object.values(byPo).map(g => ({
-      ...g,
-      sports: Object.entries(g.sports).map(([sport, cards]) => ({ sport, cards }))
-                    .sort((a, b) => b.cards - a.cards)
-    })).sort((a, b) => b.cards - a.cards);
+    const tally = k => results.filter(r => r.stage === k).length;
 
     return res.status(200).json({
       ok: true, generated: new Date(c.at).toISOString(),
+      counts: { inbound: tally('Inbound'), wip: tally('WIP'), fg: tally('FG'), other: tally('Other') },
+      cards: results.reduce((s, r) => s + r.cards, 0),
       count: results.length, rows: c.rows.length, results
     });
 
   } catch (e) {
+    noStore();
     return res.status(200).json({ ok: false, error: e.message || String(e) });
   }
 };

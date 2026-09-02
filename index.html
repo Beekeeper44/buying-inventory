@@ -133,6 +133,10 @@ tfoot td{border-top:1px solid var(--line);border-bottom:0;color:var(--text);font
 td.thumb{padding:6px 10px;width:52px}
 img.slab{width:38px;height:52px;object-fit:cover;border-radius:4px;border:1px solid var(--line);background:#111;cursor:zoom-in;display:block}
 img.slab:hover{border-color:var(--green)}
+#whTbl a,#dupTbl a{color:var(--green);text-decoration:none;border-bottom:1px solid transparent}
+#whTbl a:hover,#dupTbl a:hover{border-bottom-color:var(--green)}
+a.openlink{display:inline-block;width:38px;height:52px;line-height:52px;text-align:center;border:1px solid var(--line);border-radius:4px;color:var(--green);text-decoration:none}
+a.openlink:hover{border-color:var(--green)}
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:80;cursor:zoom-out;padding:40px}
 .lightbox.on{display:flex}
 .lightbox img{max-width:min(560px,90vw);max-height:90vh;border-radius:10px;border:1px solid var(--line)}
@@ -335,6 +339,7 @@ $50,$25-$49,2634,176,15,193"></textarea>
 <div class="pills">
   <button class="pill-btn on" data-sec="inbound"><span class="pd"></span>INBOUND<b id="pillIn">0</b></button>
   <button class="pill-btn" data-sec="wip"><span class="pd"></span>WIP<b id="pillWip">0</b></button>
+  <button class="pill-btn" data-sec="fg"><span class="pd"></span>FG<b id="pillFg">0</b></button>
 </div>
 
 <div class="searchbar">
@@ -372,6 +377,16 @@ $50,$25-$49,2634,176,15,193"></textarea>
 
 </div>
 
+
+<div class="card hidden" id="secFg">
+  <div class="card-h"><span>FINISHED GOODS <span id="fgCount" style="color:var(--muted)"></span></span><span class="hint">RELEASED · NO LONGER WIP</span></div>
+  <div style="overflow-x:auto">
+    <table id="fgTbl">
+      <thead><tr><th>PO</th><th>SHEET</th><th>VENDOR</th><th>CARDS</th><th>VAULTED</th><th>COST</th><th>DATE RCV'D</th><th>SPORT BREAKDOWN</th></tr></thead>
+      <tbody></tbody><tfoot></tfoot>
+    </table>
+  </div>
+</div>
 
 <!-- ============ DUPLICATES ============ -->
 <div id="page-dup" class="hidden">
@@ -895,7 +910,7 @@ function sheetCell(r){
 function stageCell(r){
   if(!r.stage_name) return "";
   const k=r.stage_name.toLowerCase();
-  const cls=/intake|await/.test(k)?"s1":/verified|damage/.test(k)?"s2":/ship/.test(k)?"s3":"";
+  const cls=/intake|await/.test(k)?"s1":/pending|verified|damage/.test(k)?"s2":/ship|released/.test(k)?"s3":"";
   return `<span class="chip ${cls}">${esc(r.stage_name.toUpperCase())}</span>`;
 }
 function flagCell(r){
@@ -996,6 +1011,37 @@ async function loadDoiFromMetabase(){
   $("#src").textContent="metabase · live";
   renderOverview(); if(current) renderDetail();
   return {rows:rows.length, cats:[...new Set(rows.map(r=>r.category))].length, problems:body.problems||[]};
+}
+
+/** Question 36763 — stage, sport split and pending counts per PO. */
+async function loadWipFromMetabase(){
+  const res=await fetch("/api/wip");
+  const body=await res.json().catch(()=>({ok:false,error:`HTTP ${res.status}`}));
+  if(!body.ok) throw new Error(body.error||"wip unavailable");
+  const map={};
+  (body.results||[]).forEach(r=>{ map[r.po]=r; });
+  let hit=0;
+  FLOW.forEach(r=>{
+    const m=map[r.po_number]; if(!m) return;
+    hit++;
+    r._sports=m.sports&&m.sports.length?m.sports:r._sports;
+    r._tiers=m.buckets&&m.buckets.length?m.buckets.map(b=>({tier:b.tier,cards:b.cards})):r._tiers;
+    if(m.cards) r.cards=m.cards;
+    r._vaulted=m.vaulted; r._pending=m.pending; r._pendingTotal=m.pending_total;
+    // STATUS decides: released cards are finished goods, not WIP
+    if(r.stage!=="Duplicates") r.stage=m.stage==="Other"?r.stage:m.stage;
+    if(m.stage==="FG") r.stage_name="Released";
+    else if(m.stage==="WIP") r.stage_name=topPending(m.pending)||"In process";
+  });
+  persistFlow(); renderFlow();
+  return hit;
+}
+
+function topPending(p){
+  if(!p) return "";
+  const best=Object.entries(p).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])[0];
+  if(!best) return "";
+  return "Pending "+best[0].replace("pending_","").replace("_"," ");
 }
 
 /** One Metabase call fills the sport breakdown for every PO. */
@@ -1112,6 +1158,24 @@ function renderFlow(){
       +(tt.length?`<span class="note" style="margin:0 8px 0 16px">by tier:</span> `+tt.map(([k,v])=>`<span class="chip s2">${esc(k)} ${fmt(v)}</span>`).join(""):"")
     : `<span class="note">Sport counts read automatically from each PO's buying sheet over your Google Drive connection, once per PO.</span>`;
 
+  const fg=rows.filter(r=>r.stage==="FG");
+  $("#fgCount").textContent=`· ${fg.length}`;
+  $("#fgTbl tbody").innerHTML=fg.length?fg.map(r=>`
+    <tr data-po="${esc(r.po_number)}">
+      <td class="pk">${esc(r.po_number||"—")} ${flagCell(r)}</td>
+      <td class="wrapcell">${sheetCell(r)}</td>
+      <td>${esc(r.vendor||"—")}</td>
+      <td class="strong">${r.cards?fmt(r.cards):"—"}</td>
+      <td class="strong" style="color:var(--green)">${r._vaulted?fmt(r._vaulted):"—"}</td>
+      <td>$${fmt(r.cost)}</td>
+      <td>${esc(r.received_date||"—")}</td>
+      <td class="wrapcell">${breakdownCell(r)}</td></tr>`).join("")
+    :`<tr><td colspan="8" class="note" style="padding:24px;text-align:left">Nothing released matches that filter.</td></tr>`;
+  $("#fgTbl tfoot").innerHTML=fg.length?`<tr><td>TOTAL</td><td>${fg.length} POs</td><td></td>
+    <td>${fmt(sum(fg,"cards"))}</td><td>${fmt(fg.reduce((s,r)=>s+num(r._vaulted),0))}</td>
+    <td>$${fmt(sum(fg,"cost"))}</td><td></td><td></td></tr>`:"";
+  $("#pillFg").textContent=fg.length;
+
   $("#pillIn").textContent=inb.length;
   $("#pillWip").textContent=wip.length;
   $("#flowCount").textContent=FLOW.filter(r=>r.stage!=="Duplicates").length;
@@ -1126,6 +1190,7 @@ $$(".pill-btn").forEach(b=>b.onclick=()=>{
 function applySec(){
   $("#secInbound").classList.toggle("hidden",flowSec!=="inbound");
   $("#secWip").classList.toggle("hidden",flowSec!=="wip");
+  $("#secFg").classList.toggle("hidden",flowSec!=="fg");
 }
 
 let autoRunning=false, autoAbort=false;
@@ -1170,6 +1235,11 @@ $("#readAll").onclick=async ()=>{
   autoAbort=false;
   SHEETS_OK=null;
   try{
+    const n=await loadWipFromMetabase();
+    if(n) setPullStatus(`Stage and sports from Metabase for ${n} PO${n===1?"":"s"}.`);
+  }catch(e){ /* fall through to the purchase_location parse */ }
+
+  try{
     const n=await loadSportsFromMetabase();
     setPullStatus(n?`WIP sports from Metabase for ${n} PO${n===1?"":"s"}.`:"No warehouse cards matched these POs.");
   }catch(e){ setPullStatus(`Metabase: ${e.message}`); }
@@ -1202,8 +1272,25 @@ const dupParams=()=>{
   return p;
 };
 
-function thumb(url){
-  return url ? `<img class="slab" src="${esc(url)}" alt="" loading="lazy" data-full="${esc(url)}">` : "";
+const NEEDS_MB=/not set|METABASE_/i;
+function emptyRow(cols,err){
+  if(err&&NEEDS_MB.test(err)) return `<tr><td colspan="${cols}" class="note" style="padding:26px;text-align:left;line-height:1.8">
+    <b style="color:var(--gold)">Metabase isn't connected yet.</b><br>
+    In Vercel → Settings → Environment Variables add<br>
+    <code>METABASE_HOST</code> = https://arena-club.metabaseapp.com<br>
+    <code>METABASE_API_KEY</code> = a key with read access<br>
+    then redeploy — env vars only apply to new deployments.</td></tr>`;
+  if(err) return `<tr><td colspan="${cols}" class="note" style="padding:26px;text-align:left">Couldn't load: ${esc(err)}</td></tr>`;
+  return `<tr><td colspan="${cols}" class="note" style="padding:24px;text-align:left">Nothing matches these filters.</td></tr>`;
+}
+
+function thumb(img,link){
+  if(!img) return link?`<a class="openlink" href="${esc(link)}" target="_blank" rel="noopener" title="Open card">↗</a>`:"";
+  const el=`<img class="slab" src="${esc(img)}" alt="" loading="lazy" data-full="${esc(img)}">`;
+  return el;
+}
+function cardLink(url,text){
+  return url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)}</a>` : esc(text);
 }
 
 /** Click any slab to see it full size. */
@@ -1244,18 +1331,19 @@ async function loadDuplicates(){
     fillList("dPlayerList",body.facets.player_name||[]);
     fillList("dParallelList",body.facets.parallel_name||[]);
 
-    DUPES=body.rows||[];
+    DUPES=body.rows||[]; DUP_ERR="";
     DUP_TOTAL=body.total||0; DUP_MATCHED=body.matched||0;
     $("#dupSrc").textContent=`question 36730 · ${fmt(body.total)} rows`;
     renderDupTotals(body);
     renderDup();
   }catch(e){
+    DUP_ERR=e.message; DUPES=[]; DUP_TOTAL=0; DUP_MATCHED=0;
     $("#dupSrc").textContent=e.message;
     renderDup();
   }
 }
 
-let DUPES=[], DUP_TOTAL=0, DUP_MATCHED=0;
+let DUPES=[], DUP_TOTAL=0, DUP_MATCHED=0, DUP_ERR="";
 
 function renderDupTotals(body){
   const rows=DUPES;
@@ -1277,11 +1365,11 @@ function renderDup(){
     const expo=r.total_duplicates*r.avg_estimated_value;
     const deep=r.total_duplicates>=10;
     return `<tr>
-      <td class="thumb">${thumb(r.image)}</td>
+      <td class="thumb">${thumb(r.image,r.url)}</td>
       <td>${esc(r.year||"—")}</td>
       <td class="wrapcell">${esc(r.set_name||"—")}</td>
       <td>${esc(r.insert||"—")}</td>
-      <td class="wrapcell">${esc(r.player_name||"—")}</td>
+      <td class="wrapcell">${cardLink(r.url,r.player_name||"—")}</td>
       <td>${esc(r.set_number||"—")}</td>
       <td>${esc(r.parallel_name||"—")}${r.parallel_total?` <span class="note">/${esc(r.parallel_total)}</span>`:""}</td>
       <td>${esc([r.grading_company,r.grade].filter(Boolean).join(" ").toUpperCase())||"—"}</td>
@@ -1290,7 +1378,7 @@ function renderDup(){
       <td>$${fmt(r.avg_estimated_value)}</td>
       <td class="strong" style="color:var(--gold)">$${fmt(Math.round(expo))}</td>
       <td style="color:var(--muted)">${esc(r.ac_number||"—")}</td></tr>`;
-  }).join(""):`<tr><td colspan="13" class="note" style="padding:24px;text-align:left">No duplicates match these filters.</td></tr>`;
+  }).join(""):emptyRow(13,DUP_ERR);
 
   const copies=rows.reduce((s,r)=>s+r.total_duplicates,0);
   const expo=rows.reduce((s,r)=>s+r.total_duplicates*r.avg_estimated_value,0);
@@ -1323,7 +1411,7 @@ $("#dClear").onclick=()=>{
 $("#exportDup").onclick=()=>{
   if(!DUPES.length) return toast("Nothing to export",true);
   const cols=["year","set_name","insert","player_name","set_number","parallel_name","parallel_total",
-              "grading_company","grade","tag","sport","total_duplicates","avg_estimated_value","ac_number"];
+              "grading_company","grade","tag","sport","total_duplicates","avg_estimated_value","ac_number","url"];
   const csv=[cols,...DUPES.map(r=>cols.map(c=>r[c]??""))]
     .map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const a=document.createElement("a");
@@ -1332,7 +1420,7 @@ $("#exportDup").onclick=()=>{
 };
 
 /* ================= WAREHOUSE ================= */
-let WHOUSE=[];
+let WHOUSE=[], WH_ERR="";
 const WH_FIELDS={sport:"wSport",tag:"wTag",cert:"wCert",ac:"wAc",po:"wPo",set:"wSet",
                  player:"wPlayer",parallel:"wParallel",company:"wCompany",grade:"wGrade",
                  min:"wMin",max:"wMax"};
@@ -1356,11 +1444,11 @@ async function loadWarehouse(){
     fillList("wPlayerList",body.facets.player_name||[]);
     fillList("wParallelList",body.facets.parallel_name||[]);
 
-    WHOUSE=body.rows||[];
+    WHOUSE=body.rows||[]; WH_ERR="";
     $("#whSrc").textContent=`question 4131 · ${fmt(body.total)} cards`;
     renderWarehouse(body);
   }catch(e){
-    $("#whSrc").textContent=e.message;
+    WH_ERR=e.message; $("#whSrc").textContent=e.message;
     WHOUSE=[]; renderWarehouse(null);
   }
 }
@@ -1387,11 +1475,11 @@ function renderWarehouse(body){
   $("#whCount").textContent=`· ${fmt(rows.length)}`;
   $("#whTbl tbody").innerHTML=rows.length?rows.map(r=>`
     <tr>
-      <td class="thumb">${thumb(r.image)}</td>
+      <td class="thumb">${thumb(r.image,r.url)}</td>
       <td class="pk">${esc(r.po_number||"—")}</td>
       <td>${r.tag?`<span class="chip">${esc(r.tag)}</span>`:"—"}</td>
       <td class="catname">${icon(r.sport)} ${esc(r.sport||"—")}</td>
-      <td>${esc(r.cert_number||"—")}</td>
+      <td>${cardLink(r.url,r.cert_number||"—")}</td>
       <td>${esc(r.ac_number||"—")}</td>
       <td>${esc(r.grade||r.grading_company||"—")}</td>
       <td class="wrapcell">${esc(r.set_name||"—")}</td>
@@ -1399,7 +1487,7 @@ function renderWarehouse(body){
       <td class="wrapcell">${esc(r.player_name||"—")}</td>
       <td>${esc(r.parallel_name||"—")}${r.parallel_total?` <span class="note">/${esc(r.parallel_total)}</span>`:""}</td>
       <td class="strong">$${fmt(r.estimated_value)}</td>
-    </tr>`).join(""):`<tr><td colspan="12" class="note" style="padding:24px;text-align:left">No warehouse cards match these filters.</td></tr>`;
+    </tr>`).join(""):emptyRow(12,WH_ERR);
 
   $("#whTbl tfoot").innerHTML=rows.length?`<tr>
     <td></td><td>TOTAL</td><td>${fmt(rows.length)} cards</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
@@ -1439,7 +1527,7 @@ Object.values(WH_FIELDS).forEach(id=>{
 $("#wExport").onclick=()=>{
   if(!WHOUSE.length) return toast("Nothing to export",true);
   const cols=["po_number","tag","sport","cert_number","ac_number","grading_company","grade",
-              "set_name","insert","player_name","parallel_name","parallel_total","estimated_value"];
+              "set_name","insert","player_name","parallel_name","parallel_total","estimated_value","url"];
   const csv=[cols,...WHOUSE.map(r=>cols.map(c=>r[c]??""))]
     .map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const a=document.createElement("a");
@@ -1740,8 +1828,20 @@ function persist(){ store.set(K_ROWS,ROWS); }
 
   try{
     const d=await loadDoiFromMetabase();
-    if(d.problems.length) console.warn("DOI questions with problems:",d.problems);
-  }catch(e){ /* keep the bundled category data */ }
+    if(d.problems.length){
+      console.warn("DOI questions with problems:",d.problems);
+      $("#src").textContent=`metabase · ${d.cats} of 12 loaded`;
+    }
+  }catch(e){
+    $("#src").textContent = NEEDS_MB.test(e.message)
+      ? "snapshot · metabase not connected"
+      : `snapshot · ${categories().length} of 12 categories`;
+    $("#src").title="Set METABASE_HOST and METABASE_API_KEY in Vercel, then redeploy, to load all twelve categories live.";
+    if(NEEDS_MB.test(e.message)){
+      const el=$("#catShown");
+      if(el) el.innerHTML=`· <span style="color:var(--gold)">showing the bundled snapshot — add METABASE_HOST and METABASE_API_KEY in Vercel to go live</span>`;
+    }
+  }
 
   // tab counts, so the header is populated before either tab is opened
   fetch("/api/warehouse?limit=1").then(r=>r.json()).then(b=>{
@@ -1761,6 +1861,11 @@ function persist(){ store.set(K_ROWS,ROWS); }
       : `Showing the bundled snapshot — ${e.message}`);
   }
   try{
+    const n=await loadWipFromMetabase();
+    if(n) setPullStatus(`Stage and sports from Metabase for ${n} PO${n===1?"":"s"}.`);
+  }catch(e){ /* fall through to the purchase_location parse */ }
+
+  try{
     const n=await loadSportsFromMetabase();
     if(n) setPullStatus(`WIP sports from Metabase for ${n} PO${n===1?"":"s"}.`);
   }catch(e){
@@ -1769,5 +1874,5 @@ function persist(){ store.set(K_ROWS,ROWS); }
   await autoPullSports();          // inbound, from the buying sheets
 })();
 </script>
-</body> 
+</body>
 </html>

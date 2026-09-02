@@ -42,7 +42,7 @@ function shape(row) {
     po_number:       String(get('ponumber', 'po') || '').trim(),
     tag:             String(get('tag') || '').trim(),
     image:           String(get('frontslabpictureurl', 'frontpictureurl', 'pictureurl', 'imageurl') || '').trim(),
-    url:             String(get('url', 'cardurl', 'adminurl') || '').trim(),
+    url:             String(get('url', 'cardurl', 'adminurl', 'link') || '').trim(),
     sport:           String(get('sport', 'category') || '').trim(),
     cert_number:     String(get('certnumber', 'cert') || '').trim(),
     ac_number:       String(get('8acnumber', 'acnumber', 'ac') || '').trim(),
@@ -100,9 +100,11 @@ const digitAny = (hay, raw) => {
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  const noStore = () => res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=900');
 
   if (!HOST || !KEY) {
+    noStore();
     return res.status(200).json({ ok: false, error: 'METABASE_HOST / METABASE_API_KEY not set' });
   }
 
@@ -151,6 +153,7 @@ module.exports = async (req, res) => {
     });
 
   } catch (e) {
+    noStore();
     return res.status(200).json({ ok: false, error: e.message || String(e) });
   }
 };

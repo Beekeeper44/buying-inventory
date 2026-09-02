@@ -275,6 +275,7 @@ async function sportsFor(sheets, url) {
 /* ---------- handler ---------- */
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  const noStore = () => res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
 
   const { feed = 'pos', po, all, limit = '20' } = req.query;
@@ -288,8 +289,8 @@ module.exports = async (req, res) => {
           orders: await posFeedPublic()
         });
       }
-      return res.status(200).json({
-        ok: false, mode: 'public',
+      noStore();
+    return res.status(200).json({ ok: false, mode: 'public',
         error: 'Sport counts need the service account — the buying sheets are private and their column H links are invisible to the public export.'
       });
     }
@@ -326,6 +327,7 @@ module.exports = async (req, res) => {
     return res.status(400).json({ ok: false, error: 'unknown feed' });
 
   } catch (e) {
+    noStore();
     return res.status(500).json({ ok: false, error: e.errors?.[0]?.message || e.message || String(e) });
   }
 };
