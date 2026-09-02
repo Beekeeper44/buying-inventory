@@ -109,6 +109,8 @@ tfoot td{border-top:1px solid var(--line);border-bottom:0;color:var(--text);font
 .sw{width:11px;height:11px;border-radius:3px;display:inline-block}
 .orline{display:flex;align-items:center;gap:14px;color:var(--muted);letter-spacing:2px;font-size:12px}
 .orline:before,.orline:after{content:"";height:1px;background:var(--line);flex:1}
+.minifilter{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:11px;letter-spacing:1.5px}
+.minifilter select{min-width:170px}
 .pills{display:flex;gap:10px;margin:22px 0 0;flex-wrap:wrap}
 .pill-btn{display:inline-flex;align-items:center;gap:10px;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:11px 20px;font-size:13px;letter-spacing:2px}
 .pill-btn:hover{border-color:var(--muted);color:var(--text)}
@@ -356,9 +358,11 @@ $50,$25-$49,2634,176,15,193"></textarea>
 </div>
 
 <div class="totals" id="flowTotals"></div>
-<div class="card" style="margin-bottom:22px"><div class="card-b" style="padding:14px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-  <div id="sportSummary" style="flex:1;display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div>
-  <span id="pullStatus" class="note"></span>
+<div class="card" style="margin-bottom:22px"><div class="card-b" style="padding:14px 16px;display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+  <label class="minifilter">Sport<select id="flowSport"><option value="">All sports</option></select></label>
+  <label class="minifilter">Bucket<select id="flowBucket"><option value="">All buckets</option></select></label>
+  <button class="btn ghost" id="flowFilterClear">CLEAR</button>
+  <span id="pullStatus" class="note" style="flex:1"></span>
   <button class="btn ghost" id="readAll">REFRESH SPORTS</button>
 </div></div>
 
@@ -914,8 +918,12 @@ function normFlow(){
 }
 function flowFiltered(){
   const q=$("#flowSearch").value.trim().toLowerCase(), c=$("#flowCat").value;
+  const sp=$("#flowSport")?$("#flowSport").value:"";
+  const bk=$("#flowBucket")?$("#flowBucket").value:"";
   return FLOW.filter(r=>{
     if(c!=="all" && r.category!==c) return false;
+    if(sp && !(r._sports||[]).some(x=>x.sport===sp)) return false;
+    if(bk && !(r._tiers||[]).some(x=>x.tier===bk)) return false;
     if(!q) return true;
     return [r.po_number,r.sheet_name,r.vendor,r.category,r.owner,r.tracking,r.stage_name,r.flag,r.card,r.grade].join(" ").toLowerCase().includes(q);
   });
@@ -1047,35 +1055,37 @@ async function loadWipFromMetabase(){
   const body=await res.json().catch(()=>({ok:false,error:`HTTP ${res.status}`}));
   if(!body.ok) throw new Error(body.error||"wip unavailable");
 
-  const sheet={};
-  FLOW.filter(r=>r.stage!=="Duplicates").forEach(r=>{ sheet[r.po_number]=r; });
-  const dupes=FLOW.filter(r=>r.stage==="Duplicates");
-
-  const rows=(body.results||[]).map(m=>{
-    const base=sheet[m.po]||{};
-    return {
-      po_number:m.po,
-      vendor:base.vendor||"—",
-      sheet_name:base.sheet_name||("PO "+m.po_raw),
-      sheet_url:base.sheet_url||"",
-      cost:num(base.cost),
-      tracking:base.tracking||"", carrier:base.carrier||"",
-      pkg_total:num(base.pkg_total), pkg_received:num(base.pkg_received),
-      flag:base.flag||"", paid:!!base.paid,
-      received_date:base.received_date||"", ship_date:base.ship_date||"", eta:"",
-      cards:m.cards,
-      stage:m.stage,
-      status:m.status,
-      stage_name:m.stage==="FG"?"Released":(topPending(m.pending)||m.status),
-      _sports:m.sports, _tiers:(m.buckets||[]).map(b=>({tier:b.tier,cards:b.cards})),
-      _vaulted:m.vaulted, _pending:m.pending, _pendingTotal:m.pending_total
-    };
+  // collapse the per-status rows into one entry per PO, keeping the mix
+  const byPo={};
+  (body.results||[]).forEach(m=>{
+    const g=byPo[m.po]||(byPo[m.po]={po:m.po,cards:0,vaulted:0,mix:{},sports:{},buckets:{},pending:{}});
+    g.cards+=m.cards; g.vaulted+=num(m.vaulted);
+    g.mix[m.stage]=(g.mix[m.stage]||0)+m.cards;
+    (m.sports||[]).forEach(x=>g.sports[x.sport]=(g.sports[x.sport]||0)+x.cards);
+    (m.buckets||[]).forEach(x=>g.buckets[x.tier]=(g.buckets[x.tier]||0)+x.cards);
+    Object.entries(m.pending||{}).forEach(([k,v])=>g.pending[k]=(g.pending[k]||0)+num(v));
   });
 
-  if(!rows.length) throw new Error("no rows returned");
-  FLOW=rows.concat(dupes);
+  let hit=0;
+  FLOW.forEach(r=>{
+    if(r.stage==="Duplicates") return;
+    const g=byPo[r.po_number]; if(!g) return;
+    hit++;
+    // the status holding the most cards decides the section
+    const top=Object.entries(g.mix).sort((a,b)=>b[1]-a[1])[0];
+    if(top) r.stage=top[0];
+    r._mix=g.mix;
+    r.cards=g.cards||r.cards;
+    r._vaulted=g.vaulted;
+    r._pending=g.pending;
+    r._sports=Object.entries(g.sports).map(([sport,cards])=>({sport,cards})).sort((a,b)=>b.cards-a.cards);
+    r._tiers=Object.entries(g.buckets).map(([tier,cards])=>({tier,cards})).sort((a,b)=>b.cards-a.cards);
+    r.stage_name = r.stage==="FG" ? "Released"
+                 : r.stage==="Inbound" ? "Awaiting delivery"
+                 : (topPending(g.pending)||"In process");
+  });
   persistFlow(); renderFlow();
-  return rows.length;
+  return hit;
 }
 
 function topPending(p){
@@ -1189,16 +1199,6 @@ function renderFlow(){
   $$(".read-sheet").forEach(b=>b.onclick=e=>{ e.stopPropagation(); readPoSheet(b.dataset.po); });
   const sportTotals={};
   rows.forEach(r=>(r._sports||[]).forEach(x=>sportTotals[x.sport]=(sportTotals[x.sport]||0)+x.cards));
-  const tierTotals={};
-  rows.forEach(r=>(r._tiers||[]).forEach(x=>tierTotals[x.tier]=(tierTotals[x.tier]||0)+x.cards));
-  const tt=Object.entries(tierTotals).sort((a,b)=>b[1]-a[1]);
-  const st=Object.entries(sportTotals).sort((a,b)=>b[1]-a[1]);
-  $("#sportSummary").innerHTML=st.length
-    ? `<span class="note">Cards by sport across the POs read so far:</span> `
-      +st.map(([k,v])=>`<span class="chip s3">${icon(k)} ${esc(k)} ${fmt(v)}</span>`).join("")
-      +(tt.length?`<span class="note" style="margin:0 8px 0 16px">by tier:</span> `+tt.map(([k,v])=>`<span class="chip s2">${esc(k)} ${fmt(v)}</span>`).join(""):"")
-    : `<span class="note">Sport counts read automatically from each PO's buying sheet over your Google Drive connection, once per PO.</span>`;
-
   const fg=rows.filter(r=>r.stage==="FG");
   $("#fgCount").textContent=`· ${fg.length}`;
   $("#fgTbl tbody").innerHTML=fg.length?fg.map(r=>`
@@ -1216,7 +1216,22 @@ function renderFlow(){
     <td>${fmt(sum(fg,"cards"))}</td><td>${fmt(fg.reduce((s,r)=>s+num(r._vaulted),0))}</td>
     <td>$${fmt(sum(fg,"cost"))}</td><td></td><td></td></tr>`:"";
   $("#pillFg").textContent=fg.length;
-  const uniq=list=>new Set(list.map(r=>r.po_number)).size;
+
+  // sport + bucket options, counted across the POs currently loaded
+  const sportCount={}, bucketCount={};
+  FLOW.filter(r=>r.stage!=="Duplicates").forEach(r=>{
+    (r._sports||[]).forEach(x=>sportCount[x.sport]=(sportCount[x.sport]||0)+x.cards);
+    (r._tiers||[]).forEach(x=>bucketCount[x.tier]=(bucketCount[x.tier]||0)+x.cards);
+  });
+  const opts=(id,map,label)=>{
+    const el=$("#"+id); if(!el) return;
+    const keep=el.value;
+    const list=Object.entries(map).sort((a,b)=>b[1]-a[1]);
+    el.innerHTML=`<option value="">${label}</option>`+list.map(([k,v])=>
+      `<option value="${esc(k)}"${k===keep?" selected":""}>${esc(k)} · ${fmt(v)}</option>`).join("");
+  };
+  opts("flowSport",sportCount,"All sports");
+  opts("flowBucket",bucketCount,"All buckets");
 
   $("#pillIn").textContent=inb.length;
   $("#pillWip").textContent=wip.length;
@@ -1292,6 +1307,14 @@ $("#readAll").onclick=async ()=>{
   autoPullSports();
 };
 $("#flowSearch").oninput=renderFlow;
+$("#flowSport")&&($("#flowSport").onchange=renderFlow);
+$("#flowBucket")&&($("#flowBucket").onchange=renderFlow);
+$("#flowFilterClear")&&($("#flowFilterClear").onclick=()=>{
+  if($("#flowSport")) $("#flowSport").value="";
+  if($("#flowBucket")) $("#flowBucket").value="";
+  $("#flowSearch").value=""; $("#flowCat").value="all";
+  renderFlow();
+});
 $("#flowCat").onchange=renderFlow;
 $("#exportFlow").onclick=()=>{
   const want=flowSec==="wip"?"WIP":"Inbound";
