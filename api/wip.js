@@ -103,7 +103,7 @@ function groupByPoStatus(rows) {
                   .sort((a, b) => b.cards - a.cards),
     cells: Object.entries(g.cells).map(([k, cards]) => {
       const [sport, tier] = k.split('||');
-      return { sport, tier, cards };
+      return { sport, tier, cards, stage: g.status };   // which stage these cards are in
     }).sort((a, b) => b.cards - a.cards)
   })).sort((a, b) => b.cards - a.cards);
 }
