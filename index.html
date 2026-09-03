@@ -89,6 +89,8 @@ textarea{width:100%;min-height:190px;font-size:12.5px;line-height:1.6;resize:ver
 .crumb .q{color:var(--muted);font-size:12.5px;letter-spacing:1.5px}
 
 table{width:100%;border-collapse:collapse;font-size:13.5px}
+.tscroll{overflow:auto;max-height:min(72vh,900px)}
+thead th{position:sticky;top:0;z-index:5;background:#0b0d0b;box-shadow:inset 0 -1px 0 var(--line)}
 th{text-align:right;color:var(--muted);font-weight:500;letter-spacing:1.5px;font-size:11.5px;padding:12px 16px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
 th:first-child,th:nth-child(2){text-align:left}
 th:hover{color:var(--text)}
@@ -97,6 +99,7 @@ td{padding:13px 16px;border-bottom:1px solid var(--line-soft);text-align:right;w
 td:first-child,td:nth-child(2){text-align:left}
 tbody tr:hover{background:#0e120e}
 tfoot td{border-top:1px solid var(--line);border-bottom:0;color:var(--text);font-weight:700;background:var(--panel-2)}
+tfoot td{position:sticky;bottom:0;z-index:4;background:#0d100d}
 .pk{font-family:var(--display);font-weight:700;font-size:15px}
 .doi-cell{font-family:var(--display);font-weight:700;font-size:15px;border-radius:5px;padding:5px 10px;display:inline-block;min-width:56px;text-align:center}
 .d-crit{background:rgba(255,92,92,.22);color:#ff8a8a;box-shadow:inset 0 0 0 1px var(--red-dim)}
@@ -110,7 +113,7 @@ tfoot td{border-top:1px solid var(--line);border-bottom:0;color:var(--text);font
 .orline{display:flex;align-items:center;gap:14px;color:var(--muted);letter-spacing:2px;font-size:12px}
 .orline:before,.orline:after{content:"";height:1px;background:var(--line);flex:1}
 .minifilter{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:11px;letter-spacing:1.5px}
-.minifilter select{min-width:170px}
+.minifilter select,.minifilter input{min-width:200px}
 .pills{display:flex;gap:10px;margin:22px 0 0;flex-wrap:wrap}
 .pill-btn{display:inline-flex;align-items:center;gap:10px;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:11px 20px;font-size:13px;letter-spacing:2px}
 .pill-btn:hover{border-color:var(--muted);color:var(--text)}
@@ -164,10 +167,20 @@ a.openlink:hover{border-color:var(--green)}
 tr:hover .polink{border-bottom-color:var(--green)}
 #poBody table th{cursor:default;font-size:11px}
 #poBody table td{padding:9px 12px}
+#poBody tr.drill{cursor:pointer}
+#poBody tr.drill:hover{background:#0e120e}
+#poBody tr.drill.open{background:#0e120e}
+#poBody tr.drilldown td{background:#0b0e0b;border-left:2px solid var(--green-dim)}
 #inTbl a,#wipTbl a{color:var(--green);text-decoration:none;border-bottom:1px solid var(--green-dim)}
 #inTbl a:hover,#wipTbl a:hover{border-bottom-color:var(--green)}
 .chip.s3{margin:2px 0}
 #inTbl th:hover,#wipTbl th:hover,#dupTbl th:hover,#whTbl th:hover,#tbl th:hover,#fgTbl th:hover,#lowTbl th:hover{color:var(--green)}
+.pgbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:14px 16px;border-top:1px solid var(--line)}
+.pg{background:transparent;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 12px;font-size:12.5px}
+.pg:hover:not(:disabled){border-color:var(--green);color:var(--green)}
+.pg.on{border-color:var(--green);color:var(--green);background:rgba(124,255,79,.08)}
+.pg:disabled{opacity:.35}
+.pgdots{color:var(--muted);padding:0 4px}
 .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(18px);background:var(--green);color:#04140a;padding:12px 22px;border-radius:8px;font-size:13px;letter-spacing:1px;opacity:0;pointer-events:none;transition:.18s;z-index:60}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.err{background:var(--red);color:#fff}
@@ -195,7 +208,8 @@ tr:hover .polink{border-bottom-color:var(--green)}
   <div class="tabtools">
     <button class="btn ghost" id="toggleData">LOAD DATA</button>
     <button class="btn ghost" id="toggleSheet">GOOGLE SHEET</button>
-    <button class="btn ghost" id="demoAll" title="Reload the bundled dataset for both tabs">RELOAD DATA</button>
+    <button class="btn ghost" id="refreshAll" title="Pull live data for this tab">REFRESH ↻</button>
+    <button class="btn ghost" id="demoAll" title="Reload the bundled dataset">RELOAD DATA</button>
   </div>
 </div>
 
@@ -269,7 +283,7 @@ $50,$25-$49,2634,176,15,193"></textarea>
         <button class="btn ghost" id="lowClose">CLOSE ✕</button>
       </span>
     </div>
-    <div style="overflow-x:auto">
+    <div class="tscroll">
       <table id="lowTbl">
         <thead><tr>
           <th>CATEGORY</th><th>PACK</th><th>LOWER BAND</th>
@@ -282,7 +296,7 @@ $50,$25-$49,2634,176,15,193"></textarea>
 
   <div class="card">
     <div class="card-h"><span>CATEGORIES <span id="catShown" style="color:var(--muted)"></span></span><span class="hint">CLICK A ROW TO OPEN ITS PACK BANDS</span></div>
-    <div style="overflow-x:auto">
+    <div class="tscroll">
       <table id="catTbl">
         <thead><tr>
           <th data-s="name">CATEGORY</th>
@@ -319,7 +333,7 @@ $50,$25-$49,2634,176,15,193"></textarea>
         <button class="btn ghost" id="exportCsv">EXPORT CSV</button>
       </span>
     </div>
-    <div style="overflow-x:auto">
+    <div class="tscroll">
       <table id="tbl">
         <thead><tr>
           <th data-s="pack_v">PACK</th>
@@ -364,8 +378,8 @@ $50,$25-$49,2634,176,15,193"></textarea>
 
 <div class="totals" id="flowTotals"></div>
 <div class="card" style="margin-bottom:22px"><div class="card-b" style="padding:14px 16px;display:flex;gap:12px;align-items:end;flex-wrap:wrap">
-  <label class="minifilter">Sport<select id="flowSport"><option value="">All sports</option></select></label>
-  <label class="minifilter">Bucket<select id="flowBucket"><option value="">All buckets</option></select></label>
+  <label class="minifilter">Sport<input id="flowSport" list="flowSportList" autocomplete="off" placeholder="all sports"><datalist id="flowSportList"></datalist></label>
+  <label class="minifilter">Bucket<input id="flowBucket" list="flowBucketList" autocomplete="off" placeholder="all buckets"><datalist id="flowBucketList"></datalist></label>
   <button class="btn ghost" id="flowFilterClear">CLEAR</button>
   <span id="pullStatus" class="note" style="flex:1"></span>
   <button class="btn ghost" id="readAll">REFRESH SPORTS</button>
@@ -373,22 +387,24 @@ $50,$25-$49,2634,176,15,193"></textarea>
 
 <div class="card" id="secInbound" style="margin-bottom:22px">
   <div class="card-h"><span>INBOUND <span id="inCount" style="color:var(--muted)"></span></span><span class="hint">PURCHASE ORDERS · CLICK A PO FOR ITS CARDS</span></div>
-  <div style="overflow-x:auto">
+  <div class="tscroll">
     <table id="inTbl">
       <thead><tr><th>PO</th><th>SHEET</th><th>VENDOR</th><th>CARDS</th><th>COST</th><th>PACKAGES</th><th>DAYS OPEN</th></tr></thead>
       <tbody></tbody><tfoot></tfoot>
     </table>
   </div>
+  <div class="pgbar" id="inPager"></div>
 </div>
 
 <div class="card" id="secWip">
   <div class="card-h"><span>WIP <span id="wipCount" style="color:var(--muted)"></span></span><span class="hint">PURCHASE ORDERS IN HAND</span></div>
-  <div style="overflow-x:auto">
+  <div class="tscroll">
     <table id="wipTbl">
       <thead><tr><th>PO</th><th>SHEET</th><th>VENDOR</th><th>CARDS</th><th>COST</th><th>DATE RCV'D</th><th>PACKAGES</th></tr></thead>
       <tbody></tbody><tfoot></tfoot>
     </table>
   </div>
+  <div class="pgbar" id="wipPager"></div>
 </div>
 
 </div>
@@ -407,12 +423,13 @@ $50,$25-$49,2634,176,15,193"></textarea>
 
 <div class="card hidden" id="secFg">
   <div class="card-h"><span>FINISHED GOODS <span id="fgCount" style="color:var(--muted)"></span></span><span class="hint">PURCHASE ORDERS · CLICK A PO FOR ITS CARDS</span></div>
-  <div style="overflow-x:auto">
+  <div class="tscroll">
     <table id="fgTbl">
       <thead><tr><th>PO</th><th>SHEET</th><th>VENDOR</th><th>CARDS</th><th>VAULTED</th><th>COST</th><th>DATE RCV'D</th></tr></thead>
       <tbody></tbody><tfoot></tfoot>
     </table>
   </div>
+  <div class="pgbar" id="fgPager"></div>
 </div>
 
 <!-- ============ DUPLICATES ============ -->
@@ -443,7 +460,8 @@ $50,$25-$49,2634,176,15,193"></textarea>
       <span>DUPLICATE CARDS <span id="dupCount" style="color:var(--muted)"></span></span>
       <span class="hint" id="dupSrc"></span>
     </div>
-    <div style="overflow-x:auto">
+    <div class="pgbar" id="dupPager"></div>
+    <div class="tscroll">
       <table id="dupTbl">
         <thead><tr>
           <th>IMAGE</th><th>SPORT</th><th>SET</th><th>INSERT</th><th>PLAYER</th><th>#</th>
@@ -488,7 +506,8 @@ $50,$25-$49,2634,176,15,193"></textarea>
       <span>WAREHOUSE CARDS <span id="whCount" style="color:var(--muted)"></span></span>
       <span class="hint" id="whSrc"></span>
     </div>
-    <div style="overflow-x:auto">
+    <div class="pgbar" id="whPager"></div>
+    <div class="tscroll">
       <table id="whTbl">
         <thead><tr>
           <th>IMAGE</th><th>PO</th><th>TAG</th><th>SPORT</th><th>CERT</th><th>8AC</th>
@@ -934,12 +953,13 @@ function normFlow(){
 }
 function flowFiltered(){
   const q=$("#flowSearch").value.trim().toLowerCase(), c=$("#flowCat").value;
-  const sp=$("#flowSport")?$("#flowSport").value:"";
-  const bk=$("#flowBucket")?$("#flowBucket").value:"";
+  const terms=v=>String(v||"").split(/[,\n;]+/).map(t=>t.trim().toLowerCase()).filter(Boolean);
+  const sp=terms($("#flowSport")?$("#flowSport").value:"");
+  const bk=terms($("#flowBucket")?$("#flowBucket").value:"");
   return FLOW.filter(r=>{
     if(c!=="all" && r.category!==c) return false;
-    if(sp && !(r._sports||[]).some(x=>x.sport===sp)) return false;
-    if(bk && !(r._tiers||[]).some(x=>x.tier===bk)) return false;
+    if(sp.length && !(r._sports||[]).some(x=>sp.includes(String(x.sport).toLowerCase()))) return false;
+    if(bk.length && !(r._tiers||[]).some(x=>bk.includes(String(x.tier).toLowerCase()))) return false;
     if(!q) return true;
     return [r.po_number,r.sheet_name,r.vendor,r.category,r.owner,r.tracking,r.stage_name,r.flag,r.card,r.grade].join(" ").toLowerCase().includes(q);
   });
@@ -961,7 +981,7 @@ function openPo(po){
   $("#poTitle").innerHTML=`${esc(r.po_number)} ${flagCell(r)}`;
   $("#poSub").textContent=[r.vendor,r.stage_name].filter(Boolean).join(" · ");
 
-  const sports=r._sports||[], tiers=r._tiers||[];
+  const sports=r._sports||[], tiers=(r._tiers||[]).slice().sort(byBucket);
   const pend=Object.entries(r._pending||{}).filter(([,v])=>num(v)>0)
                    .sort((a,b)=>b[1]-a[1]);
   const totalSport=sports.reduce((s,x)=>s+x.cards,0);
@@ -970,7 +990,9 @@ function openPo(po){
       <thead><tr><th style="text-align:left">${key==="sport"?"SPORT":"BUCKET"}</th><th>CARDS</th><th>SHARE</th></tr></thead>
       <tbody>${list.map(x=>{
         const n=x.cards, pct=total?(n/total)*100:0;
-        return `<tr><td style="text-align:left">${key==="sport"?icon(x.sport)+" "+esc(x.sport):esc(x.tier)}</td>
+        const val=key==="sport"?x.sport:x.tier;
+        return `<tr class="drill" data-key="${key}" data-val="${esc(val)}">
+          <td style="text-align:left">${key==="sport"?icon(x.sport)+" "+esc(x.sport):esc(x.tier)}</td>
           <td class="strong">${fmt(n)}</td>
           <td><span style="display:inline-block;width:90px;height:6px;background:#111511;border-radius:3px;vertical-align:middle;margin-right:8px">
             <i style="display:block;height:100%;width:${pct.toFixed(1)}%;background:var(--green);border-radius:3px"></i></span>${pct.toFixed(1)}%</td></tr>`;
@@ -993,6 +1015,28 @@ function openPo(po){
       ${pend.map(([k,v])=>`<span class="chip s2">${esc(k.replace("pending_"," ").trim())} ${fmt(v)}</span>`).join("")}
     </div></div>`:""}
     ${r.sheet_url?`<p class="note" style="margin-top:18px"><a href="${esc(r.sheet_url)}" target="_blank" rel="noopener">Open the buying sheet ↗</a></p>`:""}`;
+
+  // clicking a bucket shows the sports inside it, and vice versa
+  $$("#poBody tr.drill").forEach(tr=>tr.onclick=()=>{
+    const key=tr.dataset.key, val=tr.dataset.val;
+    const cells=(r._cells||[]).filter(c=>key==="sport"?c.sport===val:c.tier===val);
+    const next=tr.nextElementSibling;
+    if(next&&next.classList.contains("drilldown")){ next.remove(); tr.classList.remove("open"); return; }
+    $$("#poBody tr.drilldown").forEach(x=>x.remove());
+    $$("#poBody tr.drill").forEach(x=>x.classList.remove("open"));
+    tr.classList.add("open");
+    const total=cells.reduce((s,c)=>s+c.cards,0);
+    const list=key==="sport"
+      ? cells.slice().sort(byBucket).map(c=>[c.tier,c.cards])
+      : cells.slice().sort((a,b)=>b.cards-a.cards).map(c=>[icon(c.sport)+" "+c.sport,c.cards]);
+    const row=document.createElement("tr");
+    row.className="drilldown";
+    row.innerHTML=`<td colspan="3">
+      <div class="note" style="margin-bottom:8px">${key==="sport"?"buckets":"sports"} in ${esc(val)} · ${fmt(total)} cards</div>
+      ${list.length?list.map(([label,n])=>
+        `<span class="chip s3">${esc(label)} ${fmt(n)}</span>`).join(""):`<span class="note">no split available</span>`}</td>`;
+    tr.after(row);
+  });
 
   applySec();
 }
@@ -1050,6 +1094,17 @@ function metabaseUrl(cardId,fields){
   return `${MB_BASE}/question/${cardId}${qs?"?"+qs:""}`;
 }
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/** Buckets read low to high, not by size: 1-99, <499, 500+, then the rest. */
+const BUCKET_ORDER=["1-99","<499","500+"];
+const bucketRank=t=>{
+  const i=BUCKET_ORDER.indexOf(String(t).trim());
+  return i>=0?i:BUCKET_ORDER.length+1;
+};
+const byBucket=(a,b)=>{
+  const d=bucketRank(a.tier)-bucketRank(b.tier);
+  return d!==0?d:String(a.tier).localeCompare(String(b.tier));
+};
 let API_OK=null, SHEETS_OK=null;   // null = untested, false = not available here
 
 async function apiGet(qs){
@@ -1140,11 +1195,12 @@ async function loadWipFromMetabase(){
 
   const byPo={};
   (body.results||[]).forEach(m=>{
-    const g=byPo[m.po]||(byPo[m.po]={po:m.po,cards:0,vaulted:0,mix:{},sports:{},buckets:{},pending:{}});
+    const g=byPo[m.po]||(byPo[m.po]={po:m.po,cards:0,vaulted:0,mix:{},sports:{},buckets:{},cells:{},pending:{}});
     g.cards+=m.cards; g.vaulted+=num(m.vaulted);
     g.mix[m.stage]=(g.mix[m.stage]||0)+m.cards;
     (m.sports||[]).forEach(x=>g.sports[x.sport]=(g.sports[x.sport]||0)+x.cards);
     (m.buckets||[]).forEach(x=>g.buckets[x.tier]=(g.buckets[x.tier]||0)+x.cards);
+    (m.cells||[]).forEach(x=>{ const k=x.sport+"||"+x.tier; g.cells[k]=(g.cells[k]||0)+x.cards; });
     Object.entries(m.pending||{}).forEach(([k,v])=>g.pending[k]=(g.pending[k]||0)+num(v));
   });
 
@@ -1169,7 +1225,8 @@ async function loadWipFromMetabase(){
       stage:real[0],
       _mix:g.mix, _other:g.mix.Other||0, _vaulted:g.vaulted, _pending:g.pending,
       _sports:Object.entries(g.sports).map(([sport,cards])=>({sport,cards})).sort((a,b)=>b.cards-a.cards),
-      _tiers:Object.entries(g.buckets).map(([tier,cards])=>({tier,cards})).sort((a,b)=>b.cards-a.cards),
+      _tiers:Object.entries(g.buckets).map(([tier,cards])=>({tier,cards})).sort(byBucket),
+      _cells:Object.entries(g.cells).map(([k,cards])=>{const [sport,tier]=k.split("||");return {sport,tier,cards};}),
       stage_name: real[0]==="FG" ? "Released"
                 : real[0]==="Inbound" ? "Awaiting delivery"
                 : (topPending(g.pending)||"In process")
@@ -1252,8 +1309,10 @@ function renderFlow(){
     <div class="tot"><div class="k">OLDEST WIP</div><div class="v ${ages.length&&Math.max(...ages)>21?"red":"green"}">${ages.length?Math.max(...ages):0}d</div><div class="s">avg ${ages.length?Math.round(ages.reduce((a,b)=>a+b,0)/ages.length):0}d in process</div></div>
     <div class="tot"><div class="k">PAST ETA</div><div class="v ${late.length?"red":"green"}">${late.length}</div><div class="s">${late.length?esc(late.map(r=>r.po_number).join(", ")):"all on schedule"}</div></div>`;
 
-  $("#inCount").textContent=`· ${inb.length}`;
-  $("#inTbl tbody").innerHTML=inb.length?inb.map(r=>{
+  const inPg=page(inb,"inbound");
+  $("#inCount").textContent=`· ${fmt(inb.length)}`;
+  pager($("#inPager"),FLOW_PAGE.inbound,inPg.pages,inPg.total,p=>{FLOW_PAGE.inbound=p;renderFlow();});
+  $("#inTbl tbody").innerHTML=inPg.slice.length?inPg.slice.map(r=>{
     const e=D(r.eta), d=daysBetween(today,e);
     const openAge=daysBetween(D(r.ship_date),today);
     const dl=d!==null?(d<0?`${Math.abs(d)}d late`:`${d}d`):openAge!==null?`${openAge}d`:"—";
@@ -1268,8 +1327,10 @@ function renderFlow(){
   }).join(""):`<tr><td colspan="7" class="note" style="padding:24px;text-align:left">Nothing inbound matches that filter.</td></tr>`;
   $("#inTbl tfoot").innerHTML=inb.length?`<tr><td>TOTAL</td><td>${inb.length} POs</td><td></td><td>${fmt(sum(inb,"cards"))}</td><td>$${fmt(sum(inb,"cost"))}</td><td></td><td></td></tr>`:"";
 
-  $("#wipCount").textContent=`· ${wip.length}`;
-  $("#wipTbl tbody").innerHTML=wip.length?wip.map(r=>{
+  const wipPg=page(wip,"wip");
+  $("#wipCount").textContent=`· ${fmt(wip.length)}`;
+  pager($("#wipPager"),FLOW_PAGE.wip,wipPg.pages,wipPg.total,p=>{FLOW_PAGE.wip=p;renderFlow();});
+  $("#wipTbl tbody").innerHTML=wipPg.slice.length?wipPg.slice.map(r=>{
     const a=daysBetween(D(r.received_date),today);
     return `<tr data-po="${esc(r.po_number)}">
       <td class="pk" data-sort="${num(String(r.po_number).replace(/\D/g,""))}"><span class="polink" title="Card breakdown for this PO">${esc(r.po_number||"—")}</span> ${flagCell(r)}</td>
@@ -1286,8 +1347,10 @@ function renderFlow(){
   const sportTotals={};
   rows.forEach(r=>(r._sports||[]).forEach(x=>sportTotals[x.sport]=(sportTotals[x.sport]||0)+x.cards));
   const fg=rows.filter(r=>r.stage==="FG").sort(byPoDesc);
-  $("#fgCount").textContent=`· ${fg.length}`;
-  $("#fgTbl tbody").innerHTML=fg.length?fg.map(r=>`
+  const fgPg=page(fg,"fg");
+  $("#fgCount").textContent=`· ${fmt(fg.length)}`;
+  pager($("#fgPager"),FLOW_PAGE.fg,fgPg.pages,fgPg.total,p=>{FLOW_PAGE.fg=p;renderFlow();});
+  $("#fgTbl tbody").innerHTML=fgPg.slice.length?fgPg.slice.map(r=>`
     <tr data-po="${esc(r.po_number)}">
       <td class="pk" data-sort="${num(String(r.po_number).replace(/\D/g,""))}"><span class="polink" title="Card breakdown for this PO">${esc(r.po_number||"—")}</span> ${flagCell(r)}</td>
       <td class="wrapcell">${sheetCell(r)}</td>
@@ -1308,15 +1371,17 @@ function renderFlow(){
     (r._sports||[]).forEach(x=>sportCount[x.sport]=(sportCount[x.sport]||0)+x.cards);
     (r._tiers||[]).forEach(x=>bucketCount[x.tier]=(bucketCount[x.tier]||0)+x.cards);
   });
-  const opts=(id,map,label)=>{
+  const opts=(id,map)=>{
     const el=$("#"+id); if(!el) return;
-    const keep=el.value;
-    const list=Object.entries(map).sort((a,b)=>b[1]-a[1]);
-    el.innerHTML=`<option value="">${label}</option>`+list.map(([k,v])=>
-      `<option value="${esc(k)}"${k===keep?" selected":""}>${esc(k)} · ${fmt(v)}</option>`).join("");
+    el.innerHTML=Object.entries(map).sort((a,b)=>b[1]-a[1])
+      .map(([k,v])=>`<option value="${esc(k)}">${esc(k)} · ${fmt(v)}</option>`).join("");
   };
-  opts("flowSport",sportCount,"All sports");
-  opts("flowBucket",bucketCount,"All buckets");
+  opts("flowSportList",sportCount);
+  const el=$("#flowBucketList");
+  if(el) el.innerHTML=Object.entries(bucketCount)
+    .sort((a,b)=>bucketRank(a[0])-bucketRank(b[0])||String(a[0]).localeCompare(String(b[0])))
+    .map(([k,v])=>`<option value="${esc(k)}">${esc(k)} · ${fmt(v)}</option>`).join("");
+  makeMulti("flowSport"); makeMulti("flowBucket");
 
   $$("#inTbl tbody tr[data-po], #wipTbl tbody tr[data-po], #fgTbl tbody tr[data-po]")
     .forEach(tr=>tr.onclick=()=>openPo(tr.dataset.po));
@@ -1335,6 +1400,14 @@ function renderFlow(){
   applySec();
 }
 let flowSec="inbound", poOpen=null;
+const FLOW_PAGE={inbound:1,wip:1,fg:1};
+const PAGE_SIZE=100;
+function page(list,key){
+  const pages=Math.max(1,Math.ceil(list.length/PAGE_SIZE));
+  if(FLOW_PAGE[key]>pages) FLOW_PAGE[key]=pages;
+  const start=(FLOW_PAGE[key]-1)*PAGE_SIZE;
+  return {slice:list.slice(start,start+PAGE_SIZE),pages,total:list.length};
+}
 $("#poBack")&&($("#poBack").onclick=closePo);
 $$(".pill-btn").forEach(b=>b.onclick=()=>{
   poOpen=null;
@@ -1407,9 +1480,10 @@ $("#readAll").onclick=async ()=>{
   FLOW.forEach(r=>{ if(!r._sports){ r._tried=false; r._sportErr=null; } });
   autoPullSports();
 };
-$("#flowSearch").oninput=renderFlow;
-$("#flowSport")&&($("#flowSport").onchange=renderFlow);
-$("#flowBucket")&&($("#flowBucket").onchange=renderFlow);
+const resetFlowPages=()=>{FLOW_PAGE.inbound=FLOW_PAGE.wip=FLOW_PAGE.fg=1;};
+$("#flowSearch").oninput=()=>{resetFlowPages();renderFlow();};
+$("#flowSport")&&($("#flowSport").onchange=()=>{resetFlowPages();renderFlow();});
+$("#flowBucket")&&($("#flowBucket").onchange=()=>{resetFlowPages();renderFlow();});
 $("#flowFilterClear")&&($("#flowFilterClear").onclick=()=>{
   if($("#flowSport")) $("#flowSport").value="";
   if($("#flowBucket")) $("#flowBucket").value="";
@@ -1555,6 +1629,44 @@ function syncFieldClears(ids){
   ids.forEach(id=>{ const el=$("#"+id); if(el&&el._syncClear) el._syncClear(); });
 }
 
+/** Picking from a datalist appends instead of replacing, so several values stack up. */
+function makeMulti(id){
+  const el=$("#"+id); if(!el||el.dataset.multi) return;
+  el.dataset.multi="1";
+  el.placeholder="type or pick · several allowed";
+  el.addEventListener("input",()=>{
+    const list=document.getElementById(el.getAttribute("list"));
+    if(!list) return;
+    const v=el.value;
+    const picked=[...list.options].some(o=>o.value===v);   // a click on an option lands whole
+    if(!picked) return;
+    const prev=(el.dataset.terms||"").split(/\s*,\s*/).filter(Boolean);
+    if(!prev.includes(v)) prev.push(v);
+    el.value=prev.join(", ");
+    el.dataset.terms=el.value;
+    el.dispatchEvent(new Event("change",{bubbles:true}));
+  });
+  el.addEventListener("change",()=>{ el.dataset.terms=el.value; });
+}
+
+/** A simple pager: ‹ 1 2 3 … › with the page count. */
+function pager(el,page,pages,total,onGo){
+  if(!el) return;
+  if(pages<=1){ el.innerHTML=total?`<span class="note">${fmt(total)} rows</span>`:""; return; }
+  const win=2, out=[];
+  const add=p=>out.push(`<button class="pg${p===page?" on":""}" data-p="${p}">${p}</button>`);
+  add(1);
+  if(page-win>2) out.push(`<span class="pgdots">…</span>`);
+  for(let p=Math.max(2,page-win);p<=Math.min(pages-1,page+win);p++) add(p);
+  if(page+win<pages-1) out.push(`<span class="pgdots">…</span>`);
+  if(pages>1) add(pages);
+  el.innerHTML=`<button class="pg" data-p="${Math.max(1,page-1)}" ${page===1?"disabled":""}>‹</button>
+    ${out.join("")}
+    <button class="pg" data-p="${Math.min(pages,page+1)}" ${page===pages?"disabled":""}>›</button>
+    <span class="note" style="margin-left:12px">page ${fmt(page)} of ${fmt(pages)} · ${fmt(total)} rows</span>`;
+  el.querySelectorAll(".pg").forEach(b=>b.onclick=()=>{ const p=Number(b.dataset.p); if(p!==page) onGo(p); });
+}
+
 function fillList(id,values){
   const el=$("#"+id); if(!el) return;
   el.innerHTML=(values||[]).slice(0,2000).map(v=>`<option value="${esc(v)}">`).join("");
@@ -1566,8 +1678,10 @@ function fillSelect(id,values,keep){
     `<option${String(v)===String(keep)?" selected":""}>${esc(v)}</option>`).join("");
 }
 
-async function loadDuplicates(){
+async function loadDuplicates(resetPage){
+  if(resetPage!==false) DUP_PAGE=1;
   const p=dupParams();
+  p.set("limit","100"); p.set("offset",String((DUP_PAGE-1)*100));
   $("#dupSrc").textContent="loading…";
   try{
     const res=await fetch("/api/duplicates?"+p.toString());
@@ -1583,18 +1697,20 @@ async function loadDuplicates(){
     fillList("dParallelList",body.facets.parallel_name||[]);
 
     DUPES=body.rows||[]; DUP_ERR=""; syncFieldClears(DUP_IDS);
+    pager($("#dupPager"),DUP_PAGE,body.pages||1,body.matched||0,p=>{ DUP_PAGE=p; loadDuplicates(false); });
     DUP_TOTAL=body.total||0; DUP_MATCHED=body.matched||0;
     $("#dupSrc").textContent=`question 36730 · ${fmt(body.total)} rows`;
     renderDupTotals(body);
     renderDup();
   }catch(e){
     DUP_ERR=e.message; DUPES=[]; DUP_TOTAL=0; DUP_MATCHED=0;
+    pager($("#dupPager"),1,1,0,()=>{});
     $("#dupSrc").textContent=e.message;
     renderDup();
   }
 }
 
-let DUPES=[], DUP_TOTAL=0, DUP_MATCHED=0, DUP_ERR="";
+let DUPES=[], DUP_TOTAL=0, DUP_MATCHED=0, DUP_ERR="", DUP_PAGE=1;
 
 function renderDupTotals(body){
   const rows=DUPES;
@@ -1649,6 +1765,7 @@ function syncDupLink(){
 }
 const DUP_IDS=["dSport","dSet","dPlayer","dParallel","dTag","dCompany","dGrade","dMin","dMax"];
 wireFieldClears(DUP_IDS,()=>{ syncDupLink(); loadDuplicates(); });
+["dSport","dSet","dPlayer","dParallel","dTag","dCompany","dGrade"].forEach(makeMulti);
 $("#dApply").onclick=()=>{ syncDupLink(); loadDuplicates(); };
 $("#dClear").onclick=()=>{
   DUP_IDS.forEach(id=>{ if($("#"+id)) $("#"+id).value=""; });
@@ -1672,13 +1789,15 @@ $("#exportDup").onclick=()=>{
 };
 
 /* ================= WAREHOUSE ================= */
-let WHOUSE=[], WH_ERR="";
+let WHOUSE=[], WH_ERR="", WH_PAGE=1;
 const WH_FIELDS={sport:"wSport",tag:"wTag",cert:"wCert",ac:"wAc",po:"wPo",set:"wSet",
                  player:"wPlayer",parallel:"wParallel",company:"wCompany",grade:"wGrade",
                  min:"wMin",max:"wMax"};
 
-async function loadWarehouse(){
+async function loadWarehouse(resetPage){
+  if(resetPage!==false) WH_PAGE=1;
   const p=new URLSearchParams();
+  p.set("limit","100"); p.set("offset",String((WH_PAGE-1)*100));
   Object.entries(WH_FIELDS).forEach(([k,id])=>{
     const v=$("#"+id)?$("#"+id).value.trim():""; if(v) p.set(k,v);
   });
@@ -1697,11 +1816,12 @@ async function loadWarehouse(){
     fillList("wParallelList",body.facets.parallel_name||[]);
 
     WHOUSE=body.rows||[]; WH_ERR=""; syncFieldClears(Object.values(WH_FIELDS));
+    pager($("#whPager"),WH_PAGE,body.pages||1,body.matched||0,p=>{ WH_PAGE=p; loadWarehouse(false); });
     $("#whSrc").textContent=`question 4131 · ${fmt(body.total)} cards`;
     renderWarehouse(body);
   }catch(e){
     WH_ERR=e.message; $("#whSrc").textContent=e.message;
-    WHOUSE=[]; renderWarehouse(null);
+    WHOUSE=[]; pager($("#whPager"),1,1,0,()=>{}); renderWarehouse(null);
   }
 }
 
@@ -1752,6 +1872,7 @@ function renderWarehouse(body){
 }
 
 wireFieldClears(Object.values(WH_FIELDS),()=>{ syncWhLink(); loadWarehouse(); });
+["wSport","wTag","wSet","wPlayer","wParallel","wCompany","wGrade"].forEach(makeMulti);
 function syncWhLink(){
   const a=$("#wMetabase"); if(a) a.href=metabaseUrl(4131,WH_FIELDS);
 }
@@ -2035,6 +2156,29 @@ $("#appendFlow").onclick=()=>{const r=readFlowInput();if(!r)return;FLOW=FLOW.con
 $("#demoFlow").onclick=()=>{FLOW=JSON.parse(JSON.stringify(FLOW_DEMO));normFlow();persistFlow();renderFlow();toast("Demo data restored");};
 function persistFlow(){ store.set(K_FLOW,FLOW); }
 
+let currentPage="doi";
+
+$("#refreshAll").onclick=async ()=>{
+  const btn=$("#refreshAll"); const was=btn.textContent;
+  btn.textContent="REFRESHING…"; btn.disabled=true;
+  try{
+    if(currentPage==="doi"){
+      const d=await loadDoiFromMetabase();
+      toast(`${fmt(d.rows)} bands across ${d.cats} categories`);
+    } else if(currentPage==="flow"){
+      try{ await loadSheetMeta(); }catch(e){}
+      const n=await loadWipFromMetabase();
+      setPullStatus(`${fmt(n)} POs from Metabase${Object.keys(SHEETMAP).length?" · names and costs from the Order List":""}.`);
+      toast(`${fmt(n)} POs refreshed`);
+    } else if(currentPage==="dup"){
+      await loadDuplicates(); toast("Duplicates refreshed");
+    } else if(currentPage==="wh"){
+      await loadWarehouse(); toast("Warehouse refreshed");
+    }
+  }catch(e){ toast(e.message,true); }
+  btn.textContent=was; btn.disabled=false;
+};
+
 $("#demoAll").onclick=()=>{
   ROWS=JSON.parse(JSON.stringify(DEMO)); FLOW=JSON.parse(JSON.stringify(FLOW_DEMO));
   normalize(); normFlow(); persist(); persistFlow();
@@ -2051,6 +2195,7 @@ $("#demoAll").onclick=()=>{
 $$(".tab[data-page]").forEach(b=>b.onclick=()=>{
   $$(".tab[data-page]").forEach(x=>x.classList.remove("on")); b.classList.add("on");
   const pg=b.dataset.page;
+  currentPage=pg;
   $("#page-doi").classList.toggle("hidden",pg!=="doi");
   $("#page-flow").classList.toggle("hidden",pg!=="flow");
   $("#page-dup").classList.toggle("hidden",pg!=="dup");

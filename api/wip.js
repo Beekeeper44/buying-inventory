@@ -72,7 +72,7 @@ function groupByPoStatus(rows) {
     const key = r.po_raw + '|' + status;
     if (!by[key]) {
       by[key] = { po: 'PO-' + r.po_raw, po_raw: r.po_raw, status,
-                  cards: 0, vaulted: 0, inbound: 0, sports: {}, buckets: {}, pending: {} };
+                  cards: 0, vaulted: 0, inbound: 0, sports: {}, buckets: {}, cells: {}, pending: {} };
       PENDING.forEach(p => by[key].pending[p] = 0);
     }
     const g = by[key];
@@ -81,6 +81,9 @@ function groupByPoStatus(rows) {
     g.inbound += r.inbound;
     if (r.sport)  g.sports[r.sport]   = (g.sports[r.sport]   || 0) + r.cards;
     if (r.bucket) g.buckets[r.bucket] = (g.buckets[r.bucket] || 0) + r.cards;
+    // sport × bucket, so the UI can show which sports sit in a given bucket
+    const cell = (r.sport || 'unspecified') + '||' + (r.bucket || '—');
+    g.cells[cell] = (g.cells[cell] || 0) + r.cards;
     PENDING.forEach(p => g.pending[p] += r[p]);
   });
 
@@ -97,7 +100,11 @@ function groupByPoStatus(rows) {
     sports: Object.entries(g.sports).map(([sport, cards]) => ({ sport, cards }))
                   .sort((a, b) => b.cards - a.cards),
     buckets: Object.entries(g.buckets).map(([tier, cards]) => ({ tier, cards }))
-                  .sort((a, b) => b.cards - a.cards)
+                  .sort((a, b) => b.cards - a.cards),
+    cells: Object.entries(g.cells).map(([k, cards]) => {
+      const [sport, tier] = k.split('||');
+      return { sport, tier, cards };
+    }).sort((a, b) => b.cards - a.cards)
   })).sort((a, b) => b.cards - a.cards);
 }
 

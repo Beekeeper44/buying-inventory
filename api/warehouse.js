@@ -9,7 +9,7 @@
  * so a column of cert numbers can be pasted straight in and any row matching
  * any term comes back.
  *   min, max                                            estimated value bounds
- *   limit                                               default 300
+ *   limit, offset                                       paging, 100 per page
  *
  * The saved question is run once and cached, then filtered here.
  *
@@ -130,7 +130,8 @@ module.exports = async (req, res) => {
     const distinct = key => [...new Set(all.map(r => r[key]).filter(Boolean))]
       .sort((a, b) => String(a).localeCompare(String(b)));
 
-    const limit = Math.min(Number(q.limit) || 300, 3000);
+    const limit  = Math.min(Number(q.limit) || 100, 1000);
+    const offset = Math.max(Number(q.offset) || 0, 0);
 
     return res.status(200).json({
       ok: true,
@@ -147,9 +148,11 @@ module.exports = async (req, res) => {
         player_name: distinct('player_name').slice(0, 2000),
         parallel_name: distinct('parallel_name').slice(0, 2000)
       },
+      limit, offset,
+      pages: Math.max(1, Math.ceil(rows.length / limit)),
       rows: rows
         .sort((a, b) => b.estimated_value - a.estimated_value)
-        .slice(0, limit)
+        .slice(offset, offset + limit)
     });
 
   } catch (e) {

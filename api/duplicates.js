@@ -4,7 +4,7 @@
  * GET /api/duplicates
  *   sport, set, player, parallel, tag, company, grade   substring / exact match
  *   min, max                                            estimated value bounds
- *   limit                                               default 500
+ *   limit, offset                                       paging, 100 per page
  *
  * The saved question is run once and cached, then filtered here, so the
  * dropdowns stay instant and Metabase gets one query every 15 minutes
@@ -111,7 +111,8 @@ module.exports = async (req, res) => {
     const distinct = key => [...new Set(all.map(r => r[key]).filter(Boolean))]
       .sort((a, b) => String(a).localeCompare(String(b)));
 
-    const limit = Math.min(Number(q.limit) || 500, 5000);
+    const limit  = Math.min(Number(q.limit) || 100, 1000);
+    const offset = Math.max(Number(q.offset) || 0, 0);
 
     return res.status(200).json({
       ok: true,
@@ -129,9 +130,11 @@ module.exports = async (req, res) => {
         player_name: distinct('player_name').slice(0, 2000),
         parallel_name: distinct('parallel_name').slice(0, 2000)
       },
+      limit, offset,
+      pages: Math.max(1, Math.ceil(rows.length / limit)),
       rows: rows
         .sort((a, b) => b.total_duplicates - a.total_duplicates)
-        .slice(0, limit)
+        .slice(offset, offset + limit)
     });
 
   } catch (e) {
