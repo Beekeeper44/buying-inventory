@@ -168,10 +168,13 @@ a.openlink:hover{border-color:var(--green)}
   background:#0b0d0b;border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.6);padding:8px}
 .msel.open .mselpanel{display:block}
 .mselsearch{width:100%;margin-bottom:6px}
+.filters .msel label{flex-direction:row}
 .mselopts{max-height:260px;overflow:auto}
-.mselopt{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:5px;cursor:pointer;font-size:13px;color:var(--text)}
+.filters .mselopt,.mselopt{display:flex!important;flex-direction:row!important;align-items:center;gap:9px;
+  padding:6px 8px;border-radius:5px;cursor:pointer;font-size:13px;color:var(--text);
+  letter-spacing:0;text-align:left;text-transform:none}
 .mselopt:hover{background:#12160f}
-.mselopt input{width:14px;height:14px;accent-color:#7CFF4F;flex:0 0 14px}
+.mselopt input{width:14px;height:14px;accent-color:#7CFF4F;flex:0 0 14px;margin:0}
 .mselopt span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mselfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding-top:8px;margin-top:6px;border-top:1px solid var(--line)}
 .filters textarea{min-height:38px;height:38px;resize:vertical;padding:10px 13px;font-size:13px;line-height:1.3}
