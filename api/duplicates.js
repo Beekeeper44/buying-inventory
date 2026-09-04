@@ -108,6 +108,28 @@ module.exports = async (req, res) => {
       (!q.max || r.avg_estimated_value <= num(q.max))
     );
 
+    // ?facet=player_name&fq=kob → the matching values only, so nothing is cut off
+    if (q.facet) {
+      const key = String(q.facet);
+      if (!['sport','grading_company','grade','tag','set_name','player_name','parallel_name'].includes(key)) { noStore(); return res.status(200).json({ ok: false, error: 'unknown facet' }); }
+      const needle = String(q.fq || '').toLowerCase();
+      const seen = new Set();
+      all.forEach(r => { const v = r[key]; if (v) seen.add(String(v)); });
+      const values = [...seen]
+        .filter(v => !needle || v.toLowerCase().includes(needle))
+        .sort((a, b) => {
+          const A = a.toLowerCase(), B = b.toLowerCase();
+          if (needle) {
+            const rank = x => x.startsWith(needle) ? 0
+              : x.split(/[\s\/]+/).some(w => w.startsWith(needle)) ? 1 : 2;
+            const d = rank(A) - rank(B); if (d) return d;
+          }
+          return A.localeCompare(B);
+        })
+        .slice(0, 300);
+      return res.status(200).json({ ok: true, facet: key, total: seen.size, values });
+    }
+
     const distinct = key => [...new Set(all.map(r => r[key]).filter(Boolean))]
       .sort((a, b) => String(a).localeCompare(String(b)));
 

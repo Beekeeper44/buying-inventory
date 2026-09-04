@@ -164,15 +164,19 @@ a.openlink:hover{border-color:var(--green)}
 .mselbtn:after{content:"▾";position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted)}
 .mselbtn:hover{border-color:var(--muted)}
 .mselbtn.has{color:var(--green);border-color:var(--green-dim)}
-.mselpanel{display:none;position:absolute;z-index:40;top:calc(100% + 4px);left:0;min-width:260px;max-width:340px;
-  background:#0b0d0b;border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.6);padding:8px}
-.msel.open .mselpanel{display:block}
+.mselpanel{display:none;position:fixed;z-index:90;width:300px;background:#0b0d0b;border:1px solid var(--line);
+  border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.6);padding:8px;
+  font-family:var(--mono);font-size:13px;letter-spacing:0;text-transform:none;text-align:left;color:var(--text)}
+.mselpanel.open{display:block}
+.mselempty{color:var(--muted);padding:10px;line-height:1.6}
+.mselchips{padding:4px 2px 8px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.mselchip{cursor:pointer}
+.mselchip:hover{border-color:var(--red);color:var(--red)}
 .mselsearch{width:100%;margin-bottom:6px}
-.filters .msel label{flex-direction:row}
+
 .mselopts{max-height:260px;overflow:auto}
-.filters .mselopt,.mselopt{display:flex!important;flex-direction:row!important;align-items:center;gap:9px;
-  padding:6px 8px;border-radius:5px;cursor:pointer;font-size:13px;color:var(--text);
-  letter-spacing:0;text-align:left;text-transform:none}
+.mselopt{display:flex;flex-direction:row;align-items:center;gap:9px;padding:7px 8px;border-radius:5px;cursor:pointer}
+.mselopt span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mselopt:hover{background:#12160f}
 .mselopt input{width:14px;height:14px;accent-color:#7CFF4F;flex:0 0 14px;margin:0}
 .mselopt span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1698,10 +1702,11 @@ function syncFieldClears(ids){
 }
 
 /**
- * Turns a text input into a checkbox dropdown. The input keeps holding a
- * comma-joined list, so every filter, link and export path works unchanged.
+ * Turns a text input into a checkbox dropdown. The panel is attached to the
+ * document body, not to the filter label, so nothing it contains inherits the
+ * label's column layout, letter-spacing or casing.
  */
-function makeChecks(id,label){
+function makeChecks(id,label,source){
   const el=$("#"+id); if(!el||el.dataset.checks) return;
   el.dataset.checks="1";
   el.type="hidden";
@@ -1713,13 +1718,16 @@ function makeChecks(id,label){
 
   const btn=document.createElement("button");
   btn.type="button"; btn.className="mselbtn";
+  wrap.appendChild(btn);
+
   const panel=document.createElement("div");
   panel.className="mselpanel";
-  panel.innerHTML=`<input class="mselsearch" placeholder="search…" autocomplete="off">
+  panel.innerHTML=`<input class="mselsearch" placeholder="type to search · Enter to add" autocomplete="off">
+    <div class="mselchips" style="display:none"></div>
     <div class="mselopts"></div>
     <div class="mselfoot"><button type="button" class="btn sm ghost mselnone">CLEAR</button>
     <span class="note mselcount"></span></div>`;
-  wrap.appendChild(btn); wrap.appendChild(panel);
+  document.body.appendChild(panel);            // outside the filter label
 
   const values=()=>el.value.split(/\s*,\s*/).filter(Boolean);
   const label0=label||"Any";
@@ -1730,44 +1738,118 @@ function makeChecks(id,label){
     btn.classList.toggle("has",v.length>0);
     panel.querySelectorAll("input[type=checkbox]").forEach(c=>c.checked=v.includes(c.value));
     panel.querySelector(".mselcount").textContent=v.length?`${v.length} selected`:"";
+    const chips=panel.querySelector(".mselchips");
+    if(chips){
+      chips.innerHTML=v.map(x=>`<button type="button" class="chip s3 mselchip" data-v="${esc(x)}">${esc(x)} ✕</button>`).join("");
+      chips.style.display=v.length?"block":"none";
+      chips.querySelectorAll(".mselchip").forEach(b=>b.onclick=()=>{
+        el.value=values().filter(x=>x!==b.dataset.v).join(", ");
+        paint(); el.dispatchEvent(new Event("change",{bubbles:true}));
+      });
+    }
   };
-
   el._paint=paint;
+
   el._setOptions=list=>{
     const box=panel.querySelector(".mselopts");
     box.innerHTML=(list||[]).map(o=>{
       const val=typeof o==="string"?o:o.value;
-      const cnt=typeof o==="string"?"":o.count;
-      return `<label class="mselopt"><input type="checkbox" value="${esc(val)}">
-        <span>${esc(val)}</span>${cnt?`<b class="note">${fmt(cnt)}</b>`:""}</label>`;
-    }).join("")||`<div class="note" style="padding:10px">no values</div>`;
-    box.querySelectorAll("input[type=checkbox]").forEach(c=>c.onchange=()=>{
-      const set=new Set(values());
-      c.checked?set.add(c.value):set.delete(c.value);
-      el.value=[...set].join(", ");
-      paint();
-      el.dispatchEvent(new Event("change",{bubbles:true}));
+      return `<div class="mselopt" data-v="${esc(val)}"><input type="checkbox" value="${esc(val)}"><span>${esc(val)}</span></div>`;
+    }).join("")||`<div class="mselempty">Type a value and press Enter to filter.</div>`;
+    box.querySelectorAll(".mselopt").forEach(row=>{
+      const c=row.querySelector("input");
+      const toggle=on=>{
+        const set=new Set(values());
+        on?set.add(c.value):set.delete(c.value);
+        el.value=[...set].join(", ");
+        paint();
+        el.dispatchEvent(new Event("change",{bubbles:true}));
+      };
+      row.onclick=e=>{ if(e.target!==c){ c.checked=!c.checked; } toggle(c.checked); };
     });
     paint();
   };
 
+  const place=()=>{
+    const r=btn.getBoundingClientRect();
+    panel.style.left=Math.min(r.left,window.innerWidth-320)+"px";
+    panel.style.top=(r.bottom+6)+"px";
+  };
+  const close=()=>panel.classList.remove("open");
+
   btn.onclick=e=>{
     e.stopPropagation();
-    const open=wrap.classList.contains("open");
-    $$(".msel.open").forEach(w=>w.classList.remove("open"));
-    if(!open){ wrap.classList.add("open"); panel.querySelector(".mselsearch").focus(); }
+    const open=panel.classList.contains("open");
+    document.querySelectorAll(".mselpanel.open").forEach(p=>p.classList.remove("open"));
+    if(!open){
+      place(); panel.classList.add("open");
+      const sb=panel.querySelector(".mselsearch"); sb.focus();
+      if(!panel.querySelector(".mselopt")) lookup(sb.value.trim());
+    }
   };
   panel.onclick=e=>e.stopPropagation();
   panel.querySelector(".mselsearch").oninput=e=>{
-    const q=e.target.value.toLowerCase();
-    panel.querySelectorAll(".mselopt").forEach(o=>{
-      o.style.display=o.textContent.toLowerCase().includes(q)?"":"none";
+    const q=e.target.value.trim().toLowerCase();
+    lookup(e.target.value.trim());
+    const box=panel.querySelector(".mselopts");
+    const rows=[...box.querySelectorAll(".mselopt")];
+    let shown=0;
+    rows.forEach(o=>{
+      const v=o.dataset.v.toLowerCase();
+      const hit=!q||v.includes(q);
+      o.style.display=hit?"":"none";
+      // matches that start with the term, or whose surname starts with it, rank first
+      o.style.order=!q?0:(v.startsWith(q)?-2:v.split(/[\s\/]+/).some(w=>w.startsWith(q))?-1:0);
+      if(hit) shown++;
     });
+    box.style.display="flex"; box.style.flexDirection="column";
+    panel.querySelector(".mselcount").textContent=q
+      ? `${fmt(shown)} of ${fmt(rows.length)}`
+      : (values().length?`${values().length} selected`:"");
   };
+  const searchBox=panel.querySelector(".mselsearch");
+
+  // ask the server for matching values, so nothing is lost to a client-side cap
+  let lookupTimer=null;
+  const lookup=q=>{
+    if(!source) return;
+    clearTimeout(lookupTimer);
+    lookupTimer=setTimeout(async()=>{
+      try{
+        const res=await fetch(`${source.url}?facet=${encodeURIComponent(source.field)}&fq=${encodeURIComponent(q)}`);
+        const body=await res.json().catch(()=>({}));
+        if(!body.ok||!Array.isArray(body.values)) return;
+        el._setOptions(body.values);
+        panel.querySelector(".mselcount").textContent =
+          body.total>body.values.length ? `${fmt(body.values.length)} of ${fmt(body.total)}` : `${fmt(body.values.length)}`;
+      }catch(e){}
+    },220);
+  };
+  el._lookup=lookup;
+  searchBox.addEventListener("keydown",e=>{
+    if(e.key!=="Enter") return;
+    e.preventDefault();
+    const typed=searchBox.value.trim();
+    if(!typed) return;
+    // if one option matches exactly, tick it; otherwise use the text itself
+    const opts=[...panel.querySelectorAll(".mselopt")].map(o=>o.dataset.v);
+    const exact=opts.find(v=>v.toLowerCase()===typed.toLowerCase());
+    const shown=[...panel.querySelectorAll(".mselopt")].filter(o=>o.style.display!=="none");
+    const val=exact||(shown.length===1?shown[0].dataset.v:typed);
+    const set=new Set(values()); set.add(val);
+    el.value=[...set].join(", ");
+    searchBox.value="";
+    if(el._setOptions&&!opts.length) el._setOptions([]);   // keep the hint accurate
+    paint();
+    el.dispatchEvent(new Event("change",{bubbles:true}));
+  });
+
   panel.querySelector(".mselnone").onclick=()=>{
     el.value=""; paint(); el.dispatchEvent(new Event("change",{bubbles:true}));
   };
-  document.addEventListener("click",()=>wrap.classList.remove("open"));
+  document.addEventListener("click",close);
+  window.addEventListener("resize",close);
+  window.addEventListener("scroll",close,true);
   paint();
 }
 
@@ -1965,9 +2047,10 @@ function syncDupLink(){
 }
 const DUP_IDS=["dSport","dSet","dPlayer","dParallel","dTag","dCompany","dGrade","dMin","dMax"];
 wireFieldClears(DUP_IDS,()=>{ syncDupLink(); loadDuplicates(); });
-[["dSport","All sports"],["dSet","All sets"],["dPlayer","All players"],["dParallel","All parallels"],
- ["dTag","All tags"],["dCompany","Any company"],["dGrade","Any grade"]]
-  .forEach(([id,label])=>makeChecks(id,label));
+[["dSport","All sports","sport"],["dSet","All sets","set_name"],["dPlayer","All players","player_name"],
+ ["dParallel","All parallels","parallel_name"],["dTag","All tags","tag"],
+ ["dCompany","Any company","grading_company"],["dGrade","Any grade","grade"]]
+  .forEach(([id,label,field])=>makeChecks(id,label,{url:"/api/duplicates",field}));
 $("#dApply").onclick=()=>{ syncDupLink(); loadDuplicates(); };
 $("#dClear").onclick=()=>{
   DUP_IDS.forEach(id=>{ const el=$("#"+id); if(el){ el.value=""; if(el._paint) el._paint(); } });
@@ -2077,9 +2160,10 @@ function renderWarehouse(body){
 }
 
 wireFieldClears(Object.values(WH_FIELDS),()=>{ syncWhLink(); loadWarehouse(); });
-[["wSport","All sports"],["wTag","All tags"],["wSet","All sets"],["wPlayer","All players"],
- ["wParallel","All parallels"],["wCompany","Any company"],["wGrade","Any grade"]]
-  .forEach(([id,label])=>makeChecks(id,label));
+[["wSport","All sports","sport"],["wTag","All tags","tag"],["wSet","All sets","set_name"],
+ ["wPlayer","All players","player_name"],["wParallel","All parallels","parallel_name"],
+ ["wCompany","Any company","grading_company"],["wGrade","Any grade","grade"]]
+  .forEach(([id,label,field])=>makeChecks(id,label,{url:"/api/warehouse",field}));
 function syncWhLink(){
   const a=$("#wMetabase"); if(a) a.href=metabaseUrl(4131,WH_FIELDS);
 }
