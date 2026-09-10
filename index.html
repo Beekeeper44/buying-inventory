@@ -530,6 +530,8 @@ $50,$25-$49,2634,176,15,193"></textarea>
     <label>Grade<input id="wGrade" list="wGradeList" placeholder="type or pick" autocomplete="off"><datalist id="wGradeList"></datalist></label>
     <label>Min value<input id="wMin" placeholder="$" inputmode="decimal"></label>
     <label>Max value<input id="wMax" placeholder="$" inputmode="decimal"></label>
+    <label>Min EV age<input id="wMinAge" placeholder="days" inputmode="numeric"></label>
+    <label>Max EV age<input id="wMaxAge" placeholder="days" inputmode="numeric"></label>
     <div class="fbtns">
       <button class="btn" id="wApply">APPLY</button>
       <button class="btn ghost" id="wClear">CLEAR</button>
@@ -551,7 +553,7 @@ $50,$25-$49,2634,176,15,193"></textarea>
         <thead><tr>
           <th class="selcol">ACTION<br><input type="checkbox" id="whAll" title="Select every row on this page"></th>
           <th>IMAGE</th><th>PO</th><th>TAG</th><th>SPORT</th><th>CERT</th><th>8AC</th>
-          <th>GRADE</th><th>SET</th><th>INSERT</th><th>PLAYER</th><th>PARALLEL</th><th>EST. VALUE</th>
+          <th>GRADE</th><th>SET</th><th>INSERT</th><th>PLAYER</th><th>PARALLEL</th><th>EST. VALUE</th><th>EV AGE</th>
         </tr></thead>
         <tbody></tbody><tfoot></tfoot>
       </table>
@@ -581,45 +583,45 @@ const raw=(cat,rows)=>rows.map(r=>({category:cat,pack:r[0],lower_band:r[1],curre
 const DEMO=[
  ...raw("Baseball",[
   ["$25","$10-$24",1417,188,8,206],["$50","$25-$49",2634,176,15,193],["$100","$50-$124",2393,170,14,187],
-  ["$250","$125-$249",2120,95,22,105],["$500","$250-$499",2506,45,56,49],["$1,000","$500-$1,349",1604,25,64,28],
-  ["$2,500","$1,350-$2,500",243,8,31,9],["$2,500","$2,501-$4,999",182,5,39,5],["$2,500","$5,000-$10,000",85,2,41,2],
+  ["$250","$125-$249",2120,95,22,105],["$500","$250-$499",2506,45,56,49],["$1,000","$500-$1,000",1604,25,64,28],["$1,000","$1,001-$1,500",561,7,64,8],
+  ["$2,500","$1,501-$2,500",243,8,31,9],["$2,500","$2,501-$4,999",182,5,39,5],["$2,500","$5,000-$10,000",85,2,41,2],
   ["$2,500","$10,000+",49,0,169,0]]),
  ...raw("Basketball",[
   ["$25","$10-$24",152,106,1,116],["$50","$25-$49",1169,168,7,185],["$100","$50-$124",2337,190,12,209],
-  ["$250","$125-$249",1467,109,14,120],["$500","$250-$499",2409,60,40,66],["$1,000","$500-$1,349",1946,62,32,68],
-  ["$2,500","$1,350-$2,500",683,19,36,21],["$2,500","$2,501-$4,999",350,11,31,13],["$2,500","$5,000-$10,000",100,3,30,4],
+  ["$250","$125-$249",1467,109,14,120],["$500","$250-$499",2409,60,40,66],["$1,000","$500-$1,000",1946,62,32,68],["$1,000","$1,001-$1,500",681,18,32,20],
+  ["$2,500","$1,501-$2,500",683,19,36,21],["$2,500","$2,501-$4,999",350,11,31,13],["$2,500","$5,000-$10,000",100,3,30,4],
   ["$2,500","$10,000+",57,1,80,1]]),
  ...raw("Football",[
   ["$25","$10-$24",3386,75,45,82],["$50","$25-$49",3591,183,20,201],["$100","$50-$124",4346,323,13,356],
-  ["$250","$125-$249",1981,131,15,144],["$500","$250-$499",2987,61,49,67],["$1,000","$500-$1,349",2992,37,80,41],
-  ["$2,500","$1,350-$2,500",827,11,76,12],["$2,500","$2,501-$4,999",266,5,50,6],["$2,500","$5,000-$10,000",82,2,48,2],
+  ["$250","$125-$249",1981,131,15,144],["$500","$250-$499",2987,61,49,67],["$1,000","$500-$1,000",2992,37,80,41],["$1,000","$1,001-$1,500",1047,11,80,12],
+  ["$2,500","$1,501-$2,500",827,11,76,12],["$2,500","$2,501-$4,999",266,5,50,6],["$2,500","$5,000-$10,000",82,2,48,2],
   ["$2,500","$10,000+",42,0,109,0]]),
  ...raw("Pokemon",[
   ["$25","$10-$24",3801,218,17,240],["$50","$25-$49",4721,379,13,417],["$100","$50-$124",5930,313,19,345],
-  ["$250","$125-$249",4615,127,36,140],["$500","$250-$499",2471,78,32,86],["$1,000","$500-$1,349",654,30,22,33],
-  ["$2,500","$1,350-$2,500",125,9,14,10],["$2,500","$2,501-$4,999",109,3,34,4],["$2,500","$5,000-$10,000",50,1,97,1],
+  ["$250","$125-$249",4615,127,36,140],["$500","$250-$499",2471,78,32,86],["$1,000","$500-$1,000",654,30,22,33],["$1,000","$1,001-$1,500",228,9,22,9],
+  ["$2,500","$1,501-$2,500",125,9,14,10],["$2,500","$2,501-$4,999",109,3,34,4],["$2,500","$5,000-$10,000",50,1,97,1],
   ["$2,500","$10,000+",45,0,140,0]]),
  ...raw("One Piece",[
   ["$25","$10-$24",179,15,12,17],["$50","$25-$49",1429,28,51,31],["$100","$50-$124",4795,41,116,46],
-  ["$250","$125-$249",2818,15,190,16],["$500","$250-$499",921,7,124,8],["$1,000","$500-$1,349",255,4,71,4],
-  ["$2,500","$1,350-$2,500",55,1,43,1],["$2,500","$2,501-$4,999",29,1,53,1],["$2,500","$5,000-$10,000",20,0,620,0],
+  ["$250","$125-$249",2818,15,190,16],["$500","$250-$499",921,7,124,8],["$1,000","$500-$1,000",255,4,71,4],["$1,000","$1,001-$1,500",89,1,71,1],
+  ["$2,500","$1,501-$2,500",55,1,43,1],["$2,500","$2,501-$4,999",29,1,53,1],["$2,500","$5,000-$10,000",20,0,620,0],
   ["$2,500","$10,000+",13,0,403,0]]),
  ...raw("Hockey",[
   ["$25","$10-$24",640,58,11,60],["$50","$25-$49",905,52,17,54],["$100","$50-$124",812,44,18,45],
-  ["$250","$125-$249",610,24,25,24],["$500","$250-$499",488,12,41,12],["$1,000","$500-$1,349",302,6,50,6],
-  ["$2,500","$1,350-$2,500",88,2,44,2],["$2,500","$2,501-$4,999",44,1,44,1],["$2,500","$10,000+",12,0,120,0]]),
+  ["$250","$125-$249",610,24,25,24],["$500","$250-$499",488,12,41,12],["$1,000","$500-$1,000",302,6,50,6],["$1,000","$1,001-$1,500",105,1,50,1],
+  ["$2,500","$1,501-$2,500",88,2,44,2],["$2,500","$2,501-$4,999",44,1,44,1],["$2,500","$10,000+",12,0,120,0]]),
  ...raw("Soccer",[
   ["$25","$10-$24",708,66,11,68],["$50","$25-$49",1042,61,17,62],["$100","$50-$124",944,50,19,49],
-  ["$250","$125-$249",702,27,26,27],["$500","$250-$499",560,14,40,14],["$1,000","$500-$1,349",344,7,49,7],
-  ["$2,500","$1,350-$2,500",102,3,34,3],["$2,500","$2,501-$4,999",50,1,50,1],["$2,500","$10,000+",18,0,90,0]]),
+  ["$250","$125-$249",702,27,26,27],["$500","$250-$499",560,14,40,14],["$1,000","$500-$1,000",344,7,49,7],["$1,000","$1,001-$1,500",120,2,49,2],
+  ["$2,500","$1,501-$2,500",102,3,34,3],["$2,500","$2,501-$4,999",50,1,50,1],["$2,500","$10,000+",18,0,90,0]]),
  ...raw("UFC / MMA",[
   ["$25","$10-$24",288,22,13,24],["$50","$25-$49",402,20,20,20],["$100","$50-$124",356,16,22,16],
-  ["$250","$125-$249",244,8,30,8],["$500","$250-$499",180,4,45,4],["$1,000","$500-$1,349",96,2,48,2],
-  ["$2,500","$1,350-$2,500",30,0,120,0]]),
+  ["$250","$125-$249",244,8,30,8],["$500","$250-$499",180,4,45,4],["$1,000","$500-$1,000",96,2,48,2],["$1,000","$1,001-$1,500",33,0,48,0],
+  ["$2,500","$1,501-$2,500",30,0,120,0]]),
  ...raw("Marvel / TCG",[
   ["$25","$10-$24",512,74,7,80],["$50","$25-$49",688,60,11,62],["$100","$50-$124",590,44,13,45],
-  ["$250","$125-$249",388,20,19,20],["$500","$250-$499",250,9,28,9],["$1,000","$500-$1,349",132,4,33,4],
-  ["$2,500","$1,350-$2,500",40,1,40,1]])
+  ["$250","$125-$249",388,20,19,20],["$500","$250-$499",250,9,28,9],["$1,000","$500-$1,000",132,4,33,4],["$1,000","$1,001-$1,500",46,1,33,1],
+  ["$2,500","$1,501-$2,500",40,1,40,1]])
 ];
 
 // Bump DATA_V whenever the bundled dataset changes — stale saved state is then ignored.
@@ -766,7 +768,7 @@ function renderDetail(){
     <div class="tot"><div class="k">UNDER 10 DAYS</div><div class="v ${crit.length?"red":"green"}">${crit.length}</div><div class="s">${crit.length?esc(crit.map(r=>r.lower_band).join(", ")):"none thin"}</div></div>
     <div class="tot"><div class="k">OVER 90 DAYS</div><div class="v ${over.length?"gold":"green"}">${over.length}</div><div class="s">${over.length?esc(over.map(r=>r.lower_band).join(", ")):"none stale"}</div></div>`;
 
-  const rows=detRows();
+  const rows=detRows().slice().sort(byBand);
   const back=$("#detBack"); if(back) back.onclick=()=>$("#backBtn").click();
   $("#detCount").textContent=`· ${rows.length} of ${all.length}`;
   $("#tbl tbody").innerHTML=rows.length?rows.map(r=>`
@@ -796,7 +798,7 @@ $("#exportCats").onclick=()=>{
   a.download="doi-categories.csv"; a.click(); toast("CSV exported");
 };
 $("#exportCsv").onclick=()=>{
-  const rows=detRows(); if(!rows.length) return toast("Nothing to export",true);
+  const rows=detRows().slice().sort(byBand); if(!rows.length) return toast("Nothing to export",true);
   const cols=["category","pack","lower_band","current_inventory","cards_kept","doi","daily_output"];
   const csv=[cols,...rows.map(r=>cols.map(c=>r[c]??""))].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const a=document.createElement("a");
@@ -891,6 +893,7 @@ function openLow(mode){
     if(r.doi===null||r.doi===undefined) return false;
     return mode==="crit" ? (r.doi>0&&r.doi<10) : r.doi>90;
   });
+  rows.sort((a,b)=>String(a.category).localeCompare(String(b.category))||byBand(a,b));
   $("#lowTitle").textContent = mode==="crit"
     ? `BANDS UNDER 10 DAYS · ${rows.length}`
     : `BANDS OVER 90 DAYS · ${rows.length}`;
@@ -1157,6 +1160,20 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
 /** Buckets read low to high, not by size: 1-99, <499, 500+, then the rest. */
 const BUCKET_ORDER=["1-99","<499","500+"];
+
+/** Pack bands in their proper order, whatever order the question returns. */
+const BAND_ORDER=["$10-$24","$25-$49","$50-$124","$125-$249","$250-$499",
+                  "$500-$1,000","$1,001-$1,500","$1,501-$2,500","$2,501-$4,999",
+                  "$5,000-$10,000","$10,000+"];
+const bandKey=v=>String(v||"").replace(/\s+/g,"");
+const BAND_RANK=(()=>{ const m={}; BAND_ORDER.forEach((b,i)=>m[bandKey(b)]=i); return m; })();
+const bandRank=v=>{
+  const k=bandKey(v);
+  if(k in BAND_RANK) return BAND_RANK[k];
+  const n=parseFloat(String(v).replace(/[^0-9.]/g,""));   // unknown labels fall in by value
+  return isNaN(n)?999:100+n/100000;
+};
+const byBand=(a,b)=>bandRank(a.lower_band)-bandRank(b.lower_band);
 const bucketRank=t=>{
   const i=BUCKET_ORDER.indexOf(String(t).trim());
   return i>=0?i:BUCKET_ORDER.length+1;
@@ -2085,7 +2102,7 @@ $("#exportDup").onclick=()=>{
 let WHOUSE=[], WH_ERR="", WH_PAGE=1;
 const WH_FIELDS={sport:"wSport",tag:"wTag",cert:"wCert",ac:"wAc",po:"wPo",set:"wSet",
                  player:"wPlayer",parallel:"wParallel",company:"wCompany",grade:"wGrade",
-                 min:"wMin",max:"wMax"};
+                 min:"wMin",max:"wMax",minage:"wMinAge",maxage:"wMaxAge"};
 
 async function loadWarehouse(resetPage){
   if(resetPage!==false) WH_PAGE=1;
@@ -2129,6 +2146,9 @@ function renderWarehouse(body){
   const topSport=Object.entries(bySport).sort((a,b)=>b[1]-a[1])[0];
   const topTag=Object.entries(byTag).sort((a,b)=>b[1]-a[1])[0];
   const pos=new Set(rows.map(r=>r.po_number).filter(Boolean));
+  const ageList=rows.map(r=>r.ev_age_days).filter(v=>v!==null&&v!==undefined);
+  const avgAge=ageList.length?Math.round(ageList.reduce((a,b)=>a+b,0)/ageList.length):0;
+  const over90=ageList.filter(v=>v>90).length;
 
   $("#whTotals").innerHTML=`
     <div class="tot"><div class="k">MATCHING CARDS</div><div class="v">${fmt(body?body.matched:0)}</div><div class="s">of ${fmt(body?body.total:0)} in the warehouse</div></div>
@@ -2136,7 +2156,7 @@ function renderWarehouse(body){
     <div class="tot"><div class="k">PURCHASE ORDERS</div><div class="v">${fmt(pos.size)}</div><div class="s">represented here</div></div>
     <div class="tot"><div class="k">TOP SPORT</div><div class="v">${topSport?fmt(topSport[1]):0}</div><div class="s">${topSport?esc(topSport[0]):"—"}</div></div>
     <div class="tot"><div class="k">TOP TAG</div><div class="v gold">${topTag?fmt(topTag[1]):0}</div><div class="s">${topTag?esc(topTag[0]):"—"}</div></div>
-    <div class="tot"><div class="k">SHOWING</div><div class="v">${fmt(rows.length)}</div><div class="s">top rows by value</div></div>`;
+    <div class="tot"><div class="k">AVG EV AGE</div><div class="v ${avgAge>90?"red":avgAge>30?"gold":""}">${avgAge?fmt(avgAge)+"d":"—"}</div><div class="s">${fmt(over90)} over 90 days</div></div>`;
 
   $("#whCount").textContent=`· ${fmt(rows.length)}`;
   $("#whTbl tbody").innerHTML=rows.length?rows.map(r=>`
@@ -2154,11 +2174,16 @@ function renderWarehouse(body){
       <td class="wrapcell">${esc(r.player_name||"—")}</td>
       <td>${esc(r.parallel_name||"—")}${r.parallel_total?` <span class="note">/${esc(r.parallel_total)}</span>`:""}</td>
       <td class="strong">$${fmt(r.estimated_value)}</td>
-    </tr>`).join(""):emptyRow(13,WH_ERR);
+      <td data-sort="${r.ev_age_days===null||r.ev_age_days===undefined?"":r.ev_age_days}"
+          style="color:${r.ev_age_days>90?"var(--red)":r.ev_age_days>30?"var(--gold)":"var(--text)"}">
+        ${r.ev_age_days===null||r.ev_age_days===undefined?"—":fmt(r.ev_age_days)+"d"}</td>
+    </tr>`).join(""):emptyRow(14,WH_ERR);
 
+  const ages=rows.map(r=>r.ev_age_days).filter(v=>v!==null&&v!==undefined);
   $("#whTbl tfoot").innerHTML=rows.length?`<tr>
     <td class="selcol"></td><td></td><td>TOTAL</td><td>${fmt(rows.length)} cards</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-    <td>$${fmt(Math.round(rows.reduce((s,r)=>s+r.estimated_value,0)))}</td></tr>`:"";
+    <td>$${fmt(Math.round(rows.reduce((s,r)=>s+r.estimated_value,0)))}</td>
+    <td>${ages.length?"avg "+fmt(Math.round(ages.reduce((a,b)=>a+b,0)/ages.length))+"d":""}</td></tr>`:"";
   const total=body?body.total:0, matched=body?body.matched:0;
   if(typeof whPaint==="function") whPaint();
   $("#whTabCount").textContent = (body&&matched!==total)
@@ -2199,7 +2224,8 @@ function exportCsv(rows,cols,name){
 }
 
 const WH_COLS=["po_number","tag","sport","cert_number","ac_number","grading_company","grade",
-               "set_name","insert","player_name","parallel_name","parallel_total","estimated_value","url"];
+               "set_name","insert","player_name","parallel_name","parallel_total","estimated_value",
+               "ev_age_days","item_status","url"];
 const DUP_COLS=["year","set_name","insert","player_name","set_number","parallel_name","parallel_total",
                 "grading_company","grade","tag","sport","total_duplicates","avg_estimated_value","ac_number","url"];
 
@@ -2213,8 +2239,7 @@ const dupPaint=wireSelection({table:"dupTbl",allBox:"dupAll",bar:"dupSelBar",set
 
 $("#wExport").onclick=()=>{
   if(!WHOUSE.length) return toast("Nothing to export",true);
-  const cols=["po_number","tag","sport","cert_number","ac_number","grading_company","grade",
-              "set_name","insert","player_name","parallel_name","parallel_total","estimated_value","url"];
+  const cols=WH_COLS;
   const csv=[cols,...WHOUSE.map(r=>cols.map(c=>r[c]??""))]
     .map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const a=document.createElement("a");

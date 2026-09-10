@@ -9,6 +9,7 @@
  * so a column of cert numbers can be pasted straight in and any row matching
  * any term comes back.
  *   min, max                                            estimated value bounds
+ *   minage, maxage                                      EV age in days
  *   limit, offset                                       paging, 100 per page
  *
  * The saved question is run once and cached, then filtered here.
@@ -28,6 +29,12 @@ const num = v => {
   return isNaN(n) ? 0 : n;
 };
 const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+/** blank age is not zero */
+const numOrNull = v => {
+  if (v === null || v === undefined || String(v).trim() === '') return null;
+  const n = parseFloat(String(v).replace(/[$,\s]/g, ''));
+  return isNaN(n) ? null : n;
+};
 
 function shape(row) {
   const keys = Object.keys(row);
@@ -53,7 +60,9 @@ function shape(row) {
     player_name:     String(get('playername', 'player') || '').trim(),
     parallel_name:   String(get('parallelname', 'parallel') || '').trim(),
     parallel_total:  String(get('paralleltotal') || '').trim(),
-    estimated_value: num(get('estimatedvalue', 'ev', 'value'))
+    estimated_value: num(get('estimatedvalue', 'ev', 'value')),
+    ev_age_days:     numOrNull(get('evagedays', 'evage', 'agedays')),
+    item_status:     String(get('itemstatus', 'status') || '').trim()
   };
 }
 
@@ -124,13 +133,15 @@ module.exports = async (req, res) => {
       digitAny(r.ac_number, q.ac) &&
       digitAny(r.po_number, q.po) &&
       (!q.min || r.estimated_value >= num(q.min)) &&
-      (!q.max || r.estimated_value <= num(q.max))
+      (!q.max || r.estimated_value <= num(q.max)) &&
+      (!q.minage || (r.ev_age_days !== null && r.ev_age_days >= num(q.minage))) &&
+      (!q.maxage || (r.ev_age_days !== null && r.ev_age_days <= num(q.maxage)))
     );
 
     // ?facet=player_name&fq=kob → the matching values only, so nothing is cut off
     if (q.facet) {
       const key = String(q.facet);
-      if (!['sport','tag','grading_company','grade','set_name','player_name','parallel_name'].includes(key)) { noStore(); return res.status(200).json({ ok: false, error: 'unknown facet' }); }
+      if (!['sport','tag','grading_company','grade','set_name','player_name','parallel_name','item_status'].includes(key)) { noStore(); return res.status(200).json({ ok: false, error: 'unknown facet' }); }
       const needle = String(q.fq || '').toLowerCase();
       const seen = new Set();
       all.forEach(r => { const v = r[key]; if (v) seen.add(String(v)); });
@@ -168,7 +179,8 @@ module.exports = async (req, res) => {
         grade: distinct('grade'),
         set_name: distinct('set_name').slice(0, 2000),
         player_name: distinct('player_name').slice(0, 2000),
-        parallel_name: distinct('parallel_name').slice(0, 2000)
+        parallel_name: distinct('parallel_name').slice(0, 2000),
+        item_status: distinct('item_status')
       },
       limit, offset,
       pages: Math.max(1, Math.ceil(rows.length / limit)),
