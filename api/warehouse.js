@@ -10,6 +10,7 @@
  * any term comes back.
  *   min, max                                            estimated value bounds
  *   minage, maxage                                      EV age in days
+ *   minsold, maxsold                                    times sold back
  *   limit, offset                                       paging, 100 per page
  *
  * The saved question is run once and cached, then filtered here.
@@ -62,6 +63,7 @@ function shape(row) {
     parallel_total:  String(get('paralleltotal') || '').trim(),
     estimated_value: num(get('estimatedvalue', 'ev', 'value')),
     ev_age_days:     numOrNull(get('evagedays', 'evage', 'agedays')),
+    times_sold_back: numOrNull(get('timessoldback', 'timessold', 'soldback')),
     item_status:     String(get('itemstatus', 'status') || '').trim()
   };
 }
@@ -135,7 +137,9 @@ module.exports = async (req, res) => {
       (!q.min || r.estimated_value >= num(q.min)) &&
       (!q.max || r.estimated_value <= num(q.max)) &&
       (!q.minage || (r.ev_age_days !== null && r.ev_age_days >= num(q.minage))) &&
-      (!q.maxage || (r.ev_age_days !== null && r.ev_age_days <= num(q.maxage)))
+      (!q.maxage || (r.ev_age_days !== null && r.ev_age_days <= num(q.maxage))) &&
+      (!q.minsold || (r.times_sold_back !== null && r.times_sold_back >= num(q.minsold))) &&
+      (!q.maxsold || (r.times_sold_back !== null && r.times_sold_back <= num(q.maxsold)))
     );
 
     // ?facet=player_name&fq=kob → the matching values only, so nothing is cut off
