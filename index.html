@@ -2425,8 +2425,18 @@ function prettyDate(v){
 }
 
 /** Money columns, by name — counts and ids keep their plain numbers. */
-const isMoneyCol=c=>/(cost|price|value|profit|amount|total_?\$|revenue|bid|payout|fee)/i.test(c)
-                 && !/count|qty|quantity|cards|bids$/i.test(c);
+const isMoneyCol=c=>/(cost|price|value|profit|amount|total_?\$|revenue|bid|payout|fee|vs_?ev|ev_?vs|_ev$|^ev$|margin|delta|spread|gain|loss|net|pnl|p_?and_?l|sold|paid|shipping|tax)/i.test(c)
+                 && !/count|qty|quantity|cards|bids$|times_?sold|sold_?back|age|days|pct|percent|rate|ratio|_at$/i.test(c);
+/**
+ * Identifier columns — cert, 8AC, PO, lot, serial, year and friends. They are
+ * numeric but they are not quantities, so they print exactly as they came and
+ * never get summed in the footer. Anything ending in number/no/num/id counts.
+ */
+const isIdCol=c=>/(^|_)(number|no|num|id)$/i.test(c)
+              || /^(year|serial|sku|barcode|tracking|zip|postal_?code|upc|isbn)$/i.test(c)
+              || /_(year|serial|sku|barcode|tracking)$/i.test(c);
+/** An id printed plain: 4034032, not 4,034,032. */
+const plainId=v=>String(v).replace(/\.0+$/,"");
 /** Whole dollars, no decimals. */
 const dollars=v=>{
   const n=num(v);
@@ -2474,9 +2484,11 @@ function aucPlan(){
     if(AUC.dates[col]&&spec.kind!=="date") spec={...spec,kind:"date"};
     plan.push({col,label:spec.label,kind:spec.kind,unit:spec.unit});
   });
-  // anything else the question returns, typed by its values
+  // anything else the question returns, typed by its values. Identifier columns
+  // get no filter — cert, AC, PO and lot already have paste-a-list boxes above,
+  // and a min/max on a bare id column is meaningless.
   AUC.cols.forEach(col=>{
-    if(used.has(col)||/url$|^id$|_id$/i.test(col)||isPicCol(col)) return;
+    if(used.has(col)||/url$|^id$|_id$/i.test(col)||isPicCol(col)||isIdCol(col)) return;
     plan.push({col,label:aucLabel(col),
       kind:AUC.dates[col]?"date":AUC.numeric[col]?"range":"checks"});
   });
@@ -2618,6 +2630,8 @@ function renderAuction(body){
         if(isPicCol(c)) return `<td class="thumb" data-sort="">${thumb(String(v),"")}</td>`;
         if(isUrlCol(c)) return `<td data-sort=""><a href="${esc(v)}" target="_blank" rel="noopener">open ↗</a></td>`;
         if(AUC.dates[c]) return `<td data-sort="${esc(String(v))}">${esc(prettyDate(v))}</td>`;
+        if(isIdCol(c))
+          return `<td data-sort="${AUC.numeric[c]?num(v):esc(String(v))}">${esc(plainId(v))}</td>`;
         if(AUC.numeric[c]&&isMoneyCol(c))
           return `<td class="strong" data-sort="${num(v)}">${num(v)===0?"—":dollars(v)}</td>`;
         if(AUC.numeric[c])
@@ -2629,6 +2643,7 @@ function renderAuction(body){
   const numCols=cols.filter(c=>AUC.numeric[c]);
   $("#aucTbl tfoot").innerHTML=rows.length
     ? `<tr>${cols.map((c,i)=>i===0?`<td>TOTAL</td>`
+        :isIdCol(c)?`<td></td>`
         :AUC.numeric[c]?`<td>${isMoneyCol(c)?dollars(rows.reduce((s,r)=>s+num(r[c]),0))
                                              :fmt(Math.round(rows.reduce((s,r)=>s+num(r[c]),0)))}</td>`
         :`<td></td>`).join("")}</tr>` : "";
