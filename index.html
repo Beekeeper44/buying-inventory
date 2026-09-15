@@ -140,8 +140,9 @@ tfoot td{position:sticky;bottom:0;z-index:4;background:#0d100d}
 td.thumb{padding:6px 10px;width:52px}
 img.slab{width:38px;height:52px;object-fit:cover;border-radius:4px;border:1px solid var(--line);background:#111;cursor:zoom-in;display:block}
 img.slab:hover{border-color:var(--green)}
-#whTbl a,#dupTbl a{color:var(--green);text-decoration:none;border-bottom:1px solid transparent}
-#whTbl a:hover,#dupTbl a:hover{border-bottom-color:var(--green)}
+#whTbl a,#dupTbl a,#aucTbl a{color:var(--green);text-decoration:none;border-bottom:1px solid transparent}
+#whTbl a:hover,#dupTbl a:hover,#aucTbl a:hover{border-bottom-color:var(--green)}
+a{color:var(--green)}
 a.openlink{display:inline-block;width:38px;height:52px;line-height:52px;text-align:center;border:1px solid var(--line);border-radius:4px;color:var(--green);text-decoration:none}
 a.openlink:hover{border-color:var(--green)}
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:80;cursor:zoom-out;padding:40px}
@@ -2308,11 +2309,12 @@ const AUC={rows:[],cols:[],numeric:{},dates:{},facets:{},page:1,err:"",built:fal
  * Sample lots in the shape of question 39238, so the tab is usable before the
  * feed is reachable. Filtering, sorting, paging and export all run against it.
  */
+const AUC_DATE_HINT=/(date|_at|time)$/i;
 const AUC_FALLBACK={
-  cols:["SPORT","SET_NAME","PLAYER_NAME","PARALLEL_NAME","GRADE","TAG","CARDS",
-        "PURCHASE_COST","SOLD_PRICE","ESTIMATE_VALUE","START_DATE","END_DATE"],
+  cols:["FRONT_SLAB_PICTURE_URL","SPORT","SET_NAME","PLAYER_NAME","PARALLEL_NAME","GRADE","TAG","CARDS",
+        "PURCHASE_COST","SOLD_PRICE","ESTIMATE_VALUE","START_DATE","END_DATE","SOLD_AT","LOT_URL"],
   numeric:{CARDS:true,PURCHASE_COST:true,SOLD_PRICE:true,ESTIMATE_VALUE:true},
-  dates:{START_DATE:true,END_DATE:true}
+  dates:{START_DATE:true,END_DATE:true,SOLD_AT:true}
 };
 
 const AUC_DEMO=(()=>{
@@ -2346,11 +2348,15 @@ const AUC_DEMO=(()=>{
     const cards=[20,5,135,12,3,40,8,25,6,60,18,9,2,4,30,7,50,11,14,22][i%20];
     const cost=Math.round(r[6]*(0.35+(i%7)*0.03));
     const sold=i%9===3?0:Math.round(cost*(i%5===0?0.82:1.35+(i%6)*0.18));  // one lot unsold, one at a loss
+    const soldAt=sold?`${day(-6+(i%6))}T${String(9+(i%8)).padStart(2,"0")}:${String((i*7)%60).padStart(2,"0")}:00`:"";
     return {
+      FRONT_SLAB_PICTURE_URL:`https://images.arenaclub.com/demo/${1000+i}.jpg`,
       SPORT:r[0], SET_NAME:r[1], PLAYER_NAME:r[2], PARALLEL_NAME:r[3], GRADE:r[4], TAG:r[5],
       CARDS:cards, PURCHASE_COST:cost, SOLD_PRICE:sold, ESTIMATE_VALUE:r[6],
       START_DATE:day(-7+(i%5)),
-      END_DATE:day(2+(i%9))
+      END_DATE:day(2+(i%9)),
+      SOLD_AT:soldAt,
+      LOT_URL:`https://auctions.arenaclub.com/lot/${1000+i}`
     };
   });
 })();
@@ -2400,6 +2406,32 @@ function aucDemoResult(){
 }
 
 const aucLabel=c=>String(c).replace(/_/g," ").toUpperCase();
+const isPicCol=c=>/picture|image|photo|img|thumb/i.test(c);
+const isUrlCol=c=>/url$|^link$|_link$/i.test(c);
+
+/** "Sep 14, 2026, 3:32 PM" — the time only when the value carries one. */
+function prettyDate(v){
+  const raw=String(v??"").trim();
+  if(!raw) return "";
+  const t=Date.parse(raw);
+  if(isNaN(t)) return raw;
+  const d=new Date(t);
+  const month=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
+  const date=`${month} ${d.getDate()}, ${d.getFullYear()}`;
+  if(!/\d{1,2}:\d{2}/.test(raw)) return date;
+  let h=d.getHours(); const m=String(d.getMinutes()).padStart(2,"0");
+  const ap=h>=12?"PM":"AM"; h=h%12||12;
+  return `${date}, ${h}:${m} ${ap}`;
+}
+
+/** Money columns, by name — counts and ids keep their plain numbers. */
+const isMoneyCol=c=>/(cost|price|value|profit|amount|total_?\$|revenue|bid|payout|fee)/i.test(c)
+                 && !/count|qty|quantity|cards|bids$/i.test(c);
+/** Whole dollars, no decimals. */
+const dollars=v=>{
+  const n=num(v);
+  return (n<0?"−$":"$")+fmt(Math.round(Math.abs(n)));
+};
 
 /**
  * Filters, in the order the question presents them. A column only appears if
@@ -2444,7 +2476,7 @@ function aucPlan(){
   });
   // anything else the question returns, typed by its values
   AUC.cols.forEach(col=>{
-    if(used.has(col)||/url$|^id$|_id$/i.test(col)) return;
+    if(used.has(col)||/url$|^id$|_id$/i.test(col)||isPicCol(col)) return;
     plan.push({col,label:aucLabel(col),
       kind:AUC.dates[col]?"date":AUC.numeric[col]?"range":"checks"});
   });
@@ -2550,6 +2582,8 @@ async function loadAuction(reset){
     const body=await res.json().catch(()=>({ok:false,error:`HTTP ${res.status}`}));
     if(!body.ok) throw new Error(body.error||`HTTP ${res.status}`);
     AUC.rows=body.rows||[]; AUC.cols=body.columns||[]; AUC.numeric=body.numeric||{}; AUC.dates=body.dates||{};
+    // a column named like a date is treated as one even if the feed didn't say so
+    AUC.cols.forEach(c=>{ if(AUC_DATE_HINT.test(c)&&!AUC.numeric[c]) AUC.dates[c]=true; });
     AUC.facets=body.facets||{}; AUC.err="";
     buildAucFilters();
     $("#aucSrc").textContent=`question ${body.card} · ${fmt(body.total)} lots`;
@@ -2575,21 +2609,29 @@ async function loadAuction(reset){
 function renderAuction(body){
   const cols=AUC.cols, rows=AUC.rows;
   $("#aucTbl thead").innerHTML=cols.length
-    ? `<tr>${cols.map(c=>`<th>${esc(aucLabel(c))}</th>`).join("")}</tr>` : "";
+    ? `<tr>${cols.map(c=>`<th${isPicCol(c)?' class="selcol"':""}>${esc(isPicCol(c)?"IMAGE":aucLabel(c))}</th>`).join("")}</tr>` : "";
   $("#aucTbl tbody").innerHTML=rows.length
     ? rows.map(r=>`<tr>${cols.map(c=>{
         const v=r[c];
         const blank=v===null||v===undefined||v==="";
-        const link=/url$/i.test(c)&&!blank;
-        return `<td class="${AUC.numeric[c]?"strong":""}" data-sort="${blank?"":esc(String(v))}">${
-          blank?"—":link?`<a href="${esc(v)}" target="_blank" rel="noopener">open ↗</a>`:esc(String(v))}</td>`;
+        if(blank) return `<td data-sort="">—</td>`;
+        if(isPicCol(c)) return `<td class="thumb" data-sort="">${thumb(String(v),"")}</td>`;
+        if(isUrlCol(c)) return `<td data-sort=""><a href="${esc(v)}" target="_blank" rel="noopener">open ↗</a></td>`;
+        if(AUC.dates[c]) return `<td data-sort="${esc(String(v))}">${esc(prettyDate(v))}</td>`;
+        if(AUC.numeric[c]&&isMoneyCol(c))
+          return `<td class="strong" data-sort="${num(v)}">${num(v)===0?"—":dollars(v)}</td>`;
+        if(AUC.numeric[c])
+          return `<td class="strong" data-sort="${num(v)}">${fmt(num(v))}</td>`;
+        return `<td data-sort="${esc(String(v))}">${esc(String(v))}</td>`;
       }).join("")}</tr>`).join("")
     : emptyRow(Math.max(cols.length,1),AUC.err);
 
   const numCols=cols.filter(c=>AUC.numeric[c]);
   $("#aucTbl tfoot").innerHTML=rows.length
     ? `<tr>${cols.map((c,i)=>i===0?`<td>TOTAL</td>`
-        :AUC.numeric[c]?`<td>${fmt(Math.round(rows.reduce((s,r)=>s+num(r[c]),0)))}</td>`:`<td></td>`).join("")}</tr>` : "";
+        :AUC.numeric[c]?`<td>${isMoneyCol(c)?dollars(rows.reduce((s,r)=>s+num(r[c]),0))
+                                             :fmt(Math.round(rows.reduce((s,r)=>s+num(r[c]),0)))}</td>`
+        :`<td></td>`).join("")}</tr>` : "";
   void numCols;
 
   $("#aucCount").textContent=`· ${fmt(rows.length)}`;
