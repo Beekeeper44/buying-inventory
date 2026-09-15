@@ -55,6 +55,17 @@ textarea{width:100%;min-height:190px;font-size:12.5px;line-height:1.6;resize:ver
 .note{color:var(--muted);font-size:12.5px;line-height:1.7}
 .hidden{display:none!important}
 
+/* date fields — the browser's own calendar, made visible against the dark panel.
+   color-scheme:dark also gives the dropdown itself a dark palette. */
+input[type="date"]{color-scheme:dark;cursor:pointer;padding-right:10px}
+input[type="date"]::-webkit-calendar-picker-indicator{
+  filter:invert(1);opacity:.55;cursor:pointer;padding:2px;margin-left:6px}
+input[type="date"]::-webkit-calendar-picker-indicator:hover{opacity:1}
+input[type="date"]:focus::-webkit-calendar-picker-indicator{opacity:1}
+input[type="date"]::-webkit-datetime-edit{color:var(--text)}
+input[type="date"]:invalid::-webkit-datetime-edit,
+input[type="date"]:not(:valid)::-webkit-datetime-edit{opacity:.45}
+
 /* search bar */
 .searchbar{display:flex;gap:10px;align-items:center;margin:22px 0 18px;flex-wrap:wrap}
 .searchbar input{flex:1;min-width:240px;font-size:15px;padding:14px 16px;border-color:var(--green-dim)}
@@ -234,7 +245,7 @@ tr:hover .polink{border-bottom-color:var(--green)}
     <h1>Buying <span class="g">Inventory</span></h1>
     <div class="sub"><span class="dot"></span><span>Days of inventory by category and pack band · search a category, open its table</span></div>
   </div>
-  <div class="meta">categories <b id="catCount">0</b> · rows <b id="rowCount">0</b> · <span id="src">order list · Sep 1</span><br><b id="asof"></b></div>
+  <div class="meta">categories <b id="catCount">0</b> · rows <b id="rowCount">0</b> · <span id="src">order list · Sep 1</span><br><b id="asof"></b><br><span style="opacity:.5" id="build">build 2026-09-15c</span></div>
 </div>
 
 <div class="tabs">
@@ -2425,16 +2436,24 @@ function prettyDate(v){
 }
 
 /** Money columns, by name — counts and ids keep their plain numbers. */
-const isMoneyCol=c=>/(cost|price|value|profit|amount|total_?\$|revenue|bid|payout|fee|vs_?ev|ev_?vs|_ev$|^ev$|margin|delta|spread|gain|loss|net|pnl|p_?and_?l|sold|paid|shipping|tax)/i.test(c)
-                 && !/count|qty|quantity|cards|bids$|times_?sold|sold_?back|age|days|pct|percent|rate|ratio|_at$/i.test(c);
+const isMoneyCol=c=>{
+  const s=normCol(c);
+  return /(cost|price|value|profit|amount|total_?\$|revenue|bid|payout|fee|vs_?ev|ev_?vs|_ev$|^ev$|margin|delta|spread|gain|loss|net|pnl|p_?and_?l|sold|paid|shipping|tax)/.test(s)
+      && !/count|qty|quantity|cards|bids$|times_?sold|sold_?back|age|days|pct|percent|rate|ratio|_at$/.test(s);
+};
+/** Column names arrive as snake_case or as Metabase display names ("Cert Number"). */
+const normCol=c=>String(c??"").trim().toLowerCase().replace(/[\s.\-]+/g,"_");
 /**
  * Identifier columns — cert, 8AC, PO, lot, serial, year and friends. They are
- * numeric but they are not quantities, so they print exactly as they came and
- * never get summed in the footer. Anything ending in number/no/num/id counts.
+ * numeric but they are not quantities, so they print exactly as they came,
+ * never get summed in the footer, and get no filter of their own.
  */
-const isIdCol=c=>/(^|_)(number|no|num|id)$/i.test(c)
-              || /^(year|serial|sku|barcode|tracking|zip|postal_?code|upc|isbn)$/i.test(c)
-              || /_(year|serial|sku|barcode|tracking)$/i.test(c);
+const isIdCol=c=>{
+  const s=normCol(c);
+  return /(^|_)(number|no|num|id|cert|8ac|ac|po|lot|sku|upc|isbn)$/.test(s)
+      || /^(year|serial|barcode|tracking|zip|postal_?code)$/.test(s)
+      || /_(year|serial|barcode|tracking)$/.test(s);
+};
 /** An id printed plain: 4034032, not 4,034,032. */
 const plainId=v=>String(v).replace(/\.0+$/,"");
 /** Whole dollars, no decimals. */
@@ -3003,6 +3022,14 @@ $$(".tab[data-page]").forEach(b=>b.onclick=()=>{
 });
 
 /* ---------- boot ---------- */
+/* Clicking anywhere in a date field opens the calendar, not just the icon.
+   Filters are built after load, so this is delegated off the document. */
+document.addEventListener("click",e=>{
+  const el=e.target.closest&&e.target.closest('input[type="date"]');
+  if(!el||el.disabled||el.readOnly) return;
+  try{ el.showPicker(); }catch(_){ /* older browsers, or the icon already handled it */ }
+});
+
 function persist(){ store.set(K_ROWS,ROWS); }
 (async function init(){
   ROWS=(await store.get(K_ROWS))||JSON.parse(JSON.stringify(DEMO));
