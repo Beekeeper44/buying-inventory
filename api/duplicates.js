@@ -4,6 +4,8 @@
  * GET /api/duplicates
  *   sport, set, player, parallel, tag, company, grade   substring / exact match
  *   min, max                                            estimated value bounds
+ *   ac                                                  AC number, exact on digits
+ *   mincopies, maxcopies                                number of duplicates
  *   limit, offset                                       paging, 100 per page
  *
  * The saved question is run once and cached, then filtered here, so the
@@ -75,6 +77,12 @@ async function loadRows() {
 }
 
 const terms = v => String(v == null ? '' : v).split(/[,\n\r\t;]+/).map(t => t.trim()).filter(Boolean);
+const digits = s => String(s || '').replace(/\D/g, '');
+const digitAny = (hay, raw) => {
+  const list = terms(raw).map(digits).filter(Boolean);
+  if (!list.length) return true;
+  return list.includes(digits(hay));
+};
 const has = (hay, raw) => {
   const list = terms(raw);
   if (!list.length) return true;
@@ -101,17 +109,21 @@ module.exports = async (req, res) => {
       has(r.set_name, q.set) &&
       has(r.player_name, q.player) &&
       has(r.parallel_name, q.parallel) &&
+      has(r.insert, q.insert) &&
       has(r.tag, q.tag) &&
       has(r.grading_company, q.company) &&
       has(r.grade, q.grade) &&
       (!q.min || r.avg_estimated_value >= num(q.min)) &&
-      (!q.max || r.avg_estimated_value <= num(q.max))
+      (!q.max || r.avg_estimated_value <= num(q.max)) &&
+      digitAny(r.ac_number, q.ac) &&
+      (!q.mincopies || r.total_duplicates >= num(q.mincopies)) &&
+      (!q.maxcopies || r.total_duplicates <= num(q.maxcopies))
     );
 
     // ?facet=player_name&fq=kob → the matching values only, so nothing is cut off
     if (q.facet) {
       const key = String(q.facet);
-      if (!['sport','grading_company','grade','tag','set_name','player_name','parallel_name'].includes(key)) { noStore(); return res.status(200).json({ ok: false, error: 'unknown facet' }); }
+      if (!['sport','grading_company','grade','tag','set_name','player_name','parallel_name','insert'].includes(key)) { noStore(); return res.status(200).json({ ok: false, error: 'unknown facet' }); }
       const needle = String(q.fq || '').toLowerCase();
       const seen = new Set();
       all.forEach(r => { const v = r[key]; if (v) seen.add(String(v)); });
@@ -150,7 +162,8 @@ module.exports = async (req, res) => {
         tag: distinct('tag'),
         set_name: distinct('set_name').slice(0, 2000),
         player_name: distinct('player_name').slice(0, 2000),
-        parallel_name: distinct('parallel_name').slice(0, 2000)
+        parallel_name: distinct('parallel_name').slice(0, 2000),
+        insert: distinct('insert')
       },
       limit, offset,
       pages: Math.max(1, Math.ceil(rows.length / limit)),

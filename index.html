@@ -135,7 +135,7 @@ tfoot td{position:sticky;bottom:0;z-index:4;background:#0d100d}
 .chip.s3{color:var(--green);border-color:var(--green-dim)}
 .chip.bad{color:var(--red);border-color:var(--red-dim)}
 .age{font-family:var(--display);font-weight:700}
-#inTbl th,#wipTbl th,#dupTbl th{cursor:pointer}
+#inTbl th,#wipTbl th,#dupTbl th,#aucTbl th{cursor:pointer}
 #dupTbl td.wrapcell{max-width:260px}
 td.thumb{padding:6px 10px;width:52px}
 img.slab{width:38px;height:52px;object-fit:cover;border-radius:4px;border:1px solid var(--line);background:#111;cursor:zoom-in;display:block}
@@ -240,6 +240,7 @@ tr:hover .polink{border-bottom-color:var(--green)}
   <div style="display:flex">
     <button class="tab on" data-page="doi">DOI DASHBOARD</button>
     <button class="tab" data-page="flow">INBOUND &amp; WIP <span class="count" id="flowCount"></span></button>
+    <button class="tab" data-page="auc">AUCTION <span class="count" id="aucTabCount"></span></button>
     <button class="tab" data-page="dup">DUPLICATES <span class="count" id="dupTabCount"></span></button>
     <button class="tab" data-page="wh">WAREHOUSE <span class="count" id="whTabCount"></span></button>
   </div>
@@ -470,19 +471,43 @@ $50,$25-$49,2634,176,15,193"></textarea>
 </div>
 </div>
 
+<!-- ============ AUCTION ============ -->
+<div id="page-auc" class="hidden">
+
+  <div class="filters" id="aucFilters"></div>
+
+  <div class="totals" id="aucTotals"></div>
+
+  <div class="card">
+    <div class="card-h">
+      <span>AUCTION LOTS <span id="aucCount" style="color:var(--muted)"></span></span>
+      <span class="hint" id="aucSrc"></span>
+    </div>
+    <div class="tscroll">
+      <table id="aucTbl"><thead></thead><tbody></tbody><tfoot></tfoot></table>
+    </div>
+    <div class="pgbar" id="aucPager"></div>
+  </div>
+
+</div>
+
 <!-- ============ DUPLICATES ============ -->
 <div id="page-dup" class="hidden">
 
   <div class="filters">
-    <label>Sport<input id="dSport" list="dSportList" placeholder="type or pick" autocomplete="off"><datalist id="dSportList"></datalist></label>
-    <label>Set name<input id="dSet" list="dSetList" placeholder="type or pick" autocomplete="off"><datalist id="dSetList"></datalist></label>
-    <label>Player name<input id="dPlayer" list="dPlayerList" placeholder="type or pick" autocomplete="off"><datalist id="dPlayerList"></datalist></label>
-    <label>Parallel name<input id="dParallel" list="dParallelList" placeholder="type or pick" autocomplete="off"><datalist id="dParallelList"></datalist></label>
-    <label>Tag<input id="dTag" list="dTagList" placeholder="type or pick" autocomplete="off"><datalist id="dTagList"></datalist></label>
-    <label>Grading company<input id="dCompany" list="dCompanyList" placeholder="type or pick" autocomplete="off"><datalist id="dCompanyList"></datalist></label>
-    <label>Grade<input id="dGrade" list="dGradeList" placeholder="type or pick" autocomplete="off"><datalist id="dGradeList"></datalist></label>
+    <label>Sport<input id="dSport"></label>
+    <label>Tag<input id="dTag"></label>
+    <label>AC number<textarea id="dAc" rows="1" placeholder="paste a list"></textarea></label>
+    <label>Set name<input id="dSet"></label>
+    <label>Player name<input id="dPlayer"></label>
+    <label>Parallel name<input id="dParallel"></label>
+    <label>Insert<input id="dInsert"></label>
+    <label>Grading company<input id="dCompany"></label>
+    <label>Grade<input id="dGrade"></label>
     <label>Min value<input id="dMin" placeholder="$" inputmode="decimal"></label>
     <label>Max value<input id="dMax" placeholder="$" inputmode="decimal"></label>
+    <label>Min copies<input id="dMinCopies" placeholder="copies" inputmode="numeric"></label>
+    <label>Max copies<input id="dMaxCopies" placeholder="copies" inputmode="numeric"></label>
     <div class="fbtns">
       <button class="btn" id="dApply">APPLY</button>
       <button class="btn ghost" id="dClear">CLEAR</button>
@@ -1607,14 +1632,23 @@ $("#exportFlow").onclick=()=>{
 const dupParams=()=>{
   const v=id=>($("#"+id)?$("#"+id).value.trim():"");
   const p=new URLSearchParams();
-  const map={sport:"dSport",set:"dSet",player:"dPlayer",parallel:"dParallel",
-             tag:"dTag",company:"dCompany",grade:"dGrade",min:"dMin",max:"dMax"};
+  const map={sport:"dSport",tag:"dTag",ac:"dAc",set:"dSet",player:"dPlayer",parallel:"dParallel",
+             insert:"dInsert",company:"dCompany",grade:"dGrade",min:"dMin",max:"dMax",
+             mincopies:"dMinCopies",maxcopies:"dMaxCopies"};
   Object.entries(map).forEach(([k,id])=>{ const val=v(id); if(val) p.set(k,val); });
   return p;
 };
 
 const NEEDS_MB=/not set|METABASE_/i;
 function emptyRow(cols,err){
+  if(err==="api-missing") return `<tr><td colspan="${cols}" class="note" style="padding:26px;text-align:left;line-height:1.8">
+    <b style="color:var(--gold)">/api/auction isn't deployed.</b><br>
+    The api folder has to ship with the build — check that <code>api/auction.js</code> is in the deployment.</td></tr>`;
+  if(err&&/AUCTION_QUESTION/i.test(err)) return `<tr><td colspan="${cols}" class="note" style="padding:26px;text-align:left;line-height:1.8">
+    <b style="color:var(--gold)">The auction question isn't set yet.</b><br>
+    In Vercel → Settings → Environment Variables add<br>
+    <code>AUCTION_QUESTION</code> = the saved question's id (the number in its Metabase URL)<br>
+    then redeploy — env vars only apply to new deployments.</td></tr>`;
   if(err&&NEEDS_MB.test(err)) return `<tr><td colspan="${cols}" class="note" style="padding:26px;text-align:left;line-height:1.8">
     <b style="color:var(--gold)">Metabase isn't connected yet.</b><br>
     In Vercel → Settings → Environment Variables add<br>
@@ -1626,7 +1660,7 @@ function emptyRow(cols,err){
 }
 
 /* ---------- click-to-sort on every table ---------- */
-const SORTABLE=["#tbl","#lowTbl","#inTbl","#wipTbl","#fgTbl","#dupTbl","#whTbl"];
+const SORTABLE=["#tbl","#lowTbl","#inTbl","#wipTbl","#fgTbl","#dupTbl","#whTbl","#aucTbl"];
 
 /** Numbers, money, "12d", "3 / 5" and dates all sort as numbers; the rest as text. */
 function sortKey(cell){
@@ -2009,6 +2043,7 @@ async function loadDuplicates(resetPage){
     setChecks("dSet",body.facets.set_name||[]);
     setChecks("dPlayer",body.facets.player_name||[]);
     setChecks("dParallel",body.facets.parallel_name||[]);
+    setChecks("dInsert",body.facets.insert||[]);
 
     DUPES=body.rows||[]; DUP_ERR=""; syncFieldClears(DUP_IDS);
     const dupPages=body.pages||Math.max(1,Math.ceil((body.matched||0)/100));
@@ -2075,23 +2110,25 @@ function renderDup(){
   syncDupLink();
 }
 
-const DUP_FIELDS={sport:"dSport",set:"dSet",player:"dPlayer",parallel:"dParallel",
-  tag:"dTag",company:"dCompany",grade:"dGrade",min:"dMin",max:"dMax"};
+const DUP_FIELDS={sport:"dSport",tag:"dTag",set:"dSet",player:"dPlayer",parallel:"dParallel",
+  company:"dCompany",grade:"dGrade",min:"dMin",max:"dMax"};
 function syncDupLink(){
   const a=$("#dMetabase"); if(a) a.href=metabaseUrl(36730,DUP_FIELDS);
 }
-const DUP_IDS=["dSport","dSet","dPlayer","dParallel","dTag","dCompany","dGrade","dMin","dMax"];
+const DUP_IDS=["dSport","dTag","dAc","dSet","dPlayer","dParallel","dInsert","dCompany","dGrade",
+               "dMin","dMax","dMinCopies","dMaxCopies"];
 wireFieldClears(DUP_IDS,()=>{ syncDupLink(); loadDuplicates(); });
-[["dSport","All sports","sport"],["dSet","All sets","set_name"],["dPlayer","All players","player_name"],
- ["dParallel","All parallels","parallel_name"],["dTag","All tags","tag"],
- ["dCompany","Any company","grading_company"],["dGrade","Any grade","grade"]]
+[["dSport","All sports","sport"],["dTag","All tags","tag"],["dSet","All sets","set_name"],
+ ["dPlayer","All players","player_name"],["dParallel","All parallels","parallel_name"],
+ ["dInsert","All inserts","insert"],["dCompany","Any company","grading_company"],
+ ["dGrade","Any grade","grade"]]
   .forEach(([id,label,field])=>makeChecks(id,label,{url:"/api/duplicates",field}));
 $("#dApply").onclick=()=>{ syncDupLink(); loadDuplicates(); };
 $("#dClear").onclick=()=>{
   DUP_IDS.forEach(id=>{ const el=$("#"+id); if(el){ el.value=""; if(el._paint) el._paint(); } });
   syncFieldClears(DUP_IDS); syncDupLink(); loadDuplicates();
 };
-["dSport","dSet","dPlayer","dParallel","dTag","dCompany","dGrade","dMin","dMax"].forEach(id=>{
+DUP_IDS.forEach(id=>{
   const el=$("#"+id); if(!el) return;
   el.addEventListener("change",loadDuplicates);
   el.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); loadDuplicates(); } });
@@ -2263,6 +2300,328 @@ $("#wExport").onclick=()=>{
   a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
   a.download="warehouse-cards.csv"; a.click(); toast("CSV exported");
 };
+
+/* ================= AUCTION ================= */
+const AUC={rows:[],cols:[],numeric:{},dates:{},facets:{},page:1,err:"",built:false,filters:{},plan:[]};
+
+/**
+ * Sample lots in the shape of question 39238, so the tab is usable before the
+ * feed is reachable. Filtering, sorting, paging and export all run against it.
+ */
+const AUC_FALLBACK={
+  cols:["SPORT","SET_NAME","PLAYER_NAME","PARALLEL_NAME","GRADE","TAG","CARDS",
+        "PURCHASE_COST","SOLD_PRICE","ESTIMATE_VALUE","START_DATE","END_DATE"],
+  numeric:{CARDS:true,PURCHASE_COST:true,SOLD_PRICE:true,ESTIMATE_VALUE:true},
+  dates:{START_DATE:true,END_DATE:true}
+};
+
+const AUC_DEMO=(()=>{
+  const seed=[
+    ["basketball","2008-09 Topps Chrome","Kobe Bryant","Gold Refractor","psa 9","sd_holy_grail",4200],
+    ["basketball","2003-04 Topps Chrome","LeBron James","Refractor","psa 8","sd_holy_grail",6800],
+    ["basketball","2019-20 Panini Prizm","Ja Morant","Silver","psa 10","",1450],
+    ["basketball","2023-24 Panini Prizm","Victor Wembanyama","Orange Refractor","psa 10","sd_crown_chase",3100],
+    ["baseball","1952 Topps","Mickey Mantle","","psa 2","sd_holy_grail",22000],
+    ["baseball","2018 Topps Update","Shohei Ohtani","","psa 10","ohtani_hold",610],
+    ["baseball","1989 Upper Deck","Ken Griffey Jr.","","psa 9","",240],
+    ["baseball","2024 Topps Chrome","Paul Skenes","Refractor","psa 10","",385],
+    ["football","2000 Bowman Chrome","Tom Brady","Refractor","beckett 9",  "sd_holy_grail",9400],
+    ["football","2017 Panini Prizm","Patrick Mahomes","Silver","psa 9","",1600],
+    ["football","2023 Panini Prizm","CJ Stroud","Silver","psa 10","",420],
+    ["football","2021 Panini Select","Ja'Marr Chase","Die-Cut Black/Gold","bgs 9.5","",780],
+    ["pokemon","2006 Pokemon EX","Charizard Gold Star","","beckett 8.5","sd_poke5_chase",20000],
+    ["pokemon","1999 Base Set","Charizard","1st Edition","psa 7","",7600],
+    ["pokemon","2022 Pokemon Go","Mewtwo VSTAR","Alt Art","psa 10","",310],
+    ["one piece","2024 One Piece","Monkey.D.Luffy","Manga Alt.Art","psa 10","di_op_grail",2050],
+    ["one piece","2025 One Piece","Roronoa Zoro","Illustration Box Vol.3","psa 10","",190],
+    ["hockey","1979 O-Pee-Chee","Wayne Gretzky","","psa 5","sd_holy_grail",11800],
+    ["hockey","2023-24 Upper Deck","Connor Bedard","Young Guns","psa 10","",640],
+    ["soccer","2004 Panini Megacracks","Lionel Messi","","psa 9","sd_holy_grail",4950]
+  ];
+  const day=i=>{
+    const d=new Date(); d.setDate(d.getDate()+i);
+    return d.toISOString().slice(0,10);
+  };
+  return seed.map((r,i)=>{
+    const cards=[20,5,135,12,3,40,8,25,6,60,18,9,2,4,30,7,50,11,14,22][i%20];
+    const cost=Math.round(r[6]*(0.35+(i%7)*0.03));
+    const sold=i%9===3?0:Math.round(cost*(i%5===0?0.82:1.35+(i%6)*0.18));  // one lot unsold, one at a loss
+    return {
+      SPORT:r[0], SET_NAME:r[1], PLAYER_NAME:r[2], PARALLEL_NAME:r[3], GRADE:r[4], TAG:r[5],
+      CARDS:cards, PURCHASE_COST:cost, SOLD_PRICE:sold, ESTIMATE_VALUE:r[6],
+      START_DATE:day(-7+(i%5)),
+      END_DATE:day(2+(i%9))
+    };
+  });
+})();
+
+/** Cards, cost, sold and profit for a set of lots. */
+function aucTotals(rows){
+  let cards=0,cost=0,sold=0,costOfSold=0,soldCount=0;
+  rows.forEach(r=>{
+    const units=num(r.CARDS)||1;
+    cards+=units; cost+=num(r.PURCHASE_COST);
+    if(num(r.SOLD_PRICE)){ sold+=num(r.SOLD_PRICE); soldCount+=units; costOfSold+=num(r.PURCHASE_COST); }
+  });
+  return {lots:rows.length,cards,cost,sold,sold_count:soldCount,cost_of_sold:costOfSold,
+          profit:sold-costOfSold,margin:costOfSold?((sold-costOfSold)/costOfSold)*100:null,
+          cost_col:"PURCHASE_COST",sold_col:"SOLD_PRICE",qty_col:"CARDS"};
+}
+
+/** Run the demo rows through the same filters the API would apply. */
+function aucDemoResult(){
+  const p=aucParams();
+  const terms=v=>String(v||"").split(/[,\n;]+/).map(t=>t.trim().toLowerCase()).filter(Boolean);
+  let rows=AUC_DEMO.filter(r=>AUC_FALLBACK.cols.every(col=>{
+    const want=p.get(col);
+    if(want){
+      const list=terms(want);
+      if(list.length&&!list.some(t=>String(r[col]??"").toLowerCase().includes(t))) return false;
+    }
+    const lo=p.get("min_"+col), hi=p.get("max_"+col);
+    if(lo&&num(r[col])<num(lo)) return false;
+    if(hi&&num(r[col])>num(hi)) return false;
+    const from=p.get("from_"+col), to=p.get("to_"+col);
+    if(from&&String(r[col]||"")<from) return false;
+    if(to&&String(r[col]||"")>to) return false;
+    return true;
+  }));
+  const facets={};
+  AUC_FALLBACK.cols.forEach(col=>{
+    if(AUC_FALLBACK.numeric[col]||AUC_FALLBACK.dates[col]) return;
+    const vals=[...new Set(AUC_DEMO.map(r=>r[col]).filter(Boolean))].sort();
+    facets[col]={count:vals.length,values:vals};
+  });
+  const offset=(AUC.page-1)*100;
+  return {ok:true,card:"demo",columns:AUC_FALLBACK.cols,numeric:AUC_FALLBACK.numeric,dates:AUC_FALLBACK.dates,
+    facets,total:AUC_DEMO.length,matched:rows.length,limit:100,offset,
+    totals:aucTotals(rows), totals_all:aucTotals(AUC_DEMO),
+    pages:Math.max(1,Math.ceil(rows.length/100)),rows:rows.slice(offset,offset+100),demo:true};
+}
+
+const aucLabel=c=>String(c).replace(/_/g," ").toUpperCase();
+
+/**
+ * Filters, in the order the question presents them. A column only appears if
+ * the question actually returns it, and anything unlisted is appended after,
+ * so a change to the question never leaves a filter stranded.
+ */
+const AUC_SPEC=[
+  {match:/^(sport|category)$/i,                     label:"Sport",           kind:"checks"},
+  {match:/^(set_?name|set)$/i,                      label:"Set name",        kind:"checks"},
+  {match:/^(player_?name|player)$/i,                label:"Player name",     kind:"checks"},
+  {match:/^(parallel_?name|parallel)$/i,            label:"Parallel name",   kind:"checks"},
+  {match:/^grade$/i,                                label:"Grade",           kind:"checks"},
+  {match:/^tag$/i,                                  label:"Tag",             kind:"checks"},
+  {match:/^(estimate_?value|estimated_?value|current_?bid|ev|value|price)$/i,
+                                                    label:"estimate value",  kind:"range"},
+  {match:/^(start_?date|starts_?at|opens_?at|start)$/i,  label:"Start date",  kind:"date"},
+  {match:/^(end_?date|ends_?at|closes_?at|end|ends)$/i,   label:"End date",   kind:"date"},
+  {match:/^(cert_?number|cert)$/i,                  label:"Cert number",     kind:"list"},
+  {match:/^(ac_?number|8ac_?number|8ac|ac)$/i,      label:"AC number",       kind:"list"},
+  {match:/^(po_?number|po)$/i,                      label:"PO number",       kind:"list"},
+  {match:/^insert/i,                                label:"Insert",          kind:"checks"},
+  {match:/^(grading_?company|grader)$/i,            label:"Grading company", kind:"checks"},
+  {match:/^(lot_?number|lot)$/i,                    label:"Lot",             kind:"list"},
+  {match:/^(status|item_?status)$/i,                label:"Status",          kind:"checks"},
+  {match:/^(auction|auction_?name|house|seller)$/i, label:"Auction",         kind:"checks"},
+  {match:/^(bids|bid_?count|num_?bids)$/i,          label:"bids",            kind:"range", unit:"bids"},
+  {match:/^(total_?duplicates|copies|duplicates|qty|quantity)$/i,
+                                                    label:"copies",          kind:"range", unit:"copies"},
+  {match:/^(ev_?age_?days|ev_?age|age_?days)$/i,    label:"EV age",          kind:"range", unit:"days"},
+  {match:/^(times_?sold_?back|times_?sold|sold_?back)$/i,
+                                                    label:"sold back",       kind:"range", unit:"times"}
+];
+
+function aucPlan(){
+  const used=new Set(), plan=[];
+  AUC_SPEC.forEach(spec=>{
+    const col=AUC.cols.find(c=>spec.match.test(c)&&!used.has(c));
+    if(!col) return;
+    used.add(col);
+    if(AUC.dates[col]&&spec.kind!=="date") spec={...spec,kind:"date"};
+    plan.push({col,label:spec.label,kind:spec.kind,unit:spec.unit});
+  });
+  // anything else the question returns, typed by its values
+  AUC.cols.forEach(col=>{
+    if(used.has(col)||/url$|^id$|_id$/i.test(col)) return;
+    plan.push({col,label:aucLabel(col),
+      kind:AUC.dates[col]?"date":AUC.numeric[col]?"range":"checks"});
+  });
+  return plan;
+}
+
+/** The filter row, built from the plan above. */
+function buildAucFilters(){
+  if(AUC.built) return;
+  const box=$("#aucFilters"); if(!box) return;
+  const plan=aucPlan();
+  AUC.plan=plan;
+  const parts=plan.map(f=>{
+    const id="auc_"+f.col.replace(/[^A-Za-z0-9]/g,"_");
+    AUC.filters[f.col]=id;
+    if(f.kind==="range"){
+      const ph=f.unit||"$";
+      const cap=f.label.charAt(0).toUpperCase()+f.label.slice(1);
+      return `<label>Min ${esc(f.label)}<input id="${id}_min" inputmode="decimal" placeholder="${esc(ph)}"></label>
+              <label>Max ${esc(f.label)}<input id="${id}_max" inputmode="decimal" placeholder="${esc(ph)}"></label>`;
+    }
+    if(f.kind==="date")
+      return `<label>${esc(f.label)} from<input id="${id}_from" type="date"></label>
+              <label>${esc(f.label)} to<input id="${id}_to" type="date"></label>`;
+    if(f.kind==="list")
+      return `<label>${esc(f.label)}<textarea id="${id}" rows="1" placeholder="paste a list"></textarea></label>`;
+    return `<label>${esc(f.label)}<input id="${id}"></label>`;
+  });
+  parts.push(`<div class="fbtns">
+      <button class="btn" id="aucApply">APPLY</button>
+      <button class="btn ghost" id="aucClear">CLEAR</button>
+      <button class="btn ghost" id="aucExport">EXPORT CSV</button>
+    </div>`);
+  box.innerHTML=parts.join("");
+
+  plan.forEach(f=>{
+    const id=AUC.filters[f.col];
+    if(f.kind==="checks"){
+      const plural=/s$/i.test(f.label)?f.label.toLowerCase():f.label.toLowerCase().replace(/\bname\b/,"").trim();
+      const hint=/grade|company|status|tag/i.test(f.label)?"Any "+plural:"All "+plural+(/s$/.test(plural)?"":"s");
+      makeChecks(id,hint,{url:"/api/auction",field:f.col});
+      const el=$("#"+id);
+      if(el&&AUC.facets[f.col]&&el._setOptions) el._setOptions(AUC.facets[f.col].values||[]);
+      if(el) el.addEventListener("change",()=>{ AUC.page=1; loadAuction(false); });
+    } else if(f.kind==="list"){
+      const el=$("#"+id); if(!el) return;
+      el.addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); AUC.page=1; loadAuction(false); } });
+      el.addEventListener("paste",()=>setTimeout(()=>{ AUC.page=1; loadAuction(false); },60));
+    } else if(f.kind==="date"){
+      ["_from","_to"].forEach(sfx=>{
+        const el=$("#"+id+sfx); if(!el) return;
+        el.addEventListener("change",()=>{ AUC.page=1; loadAuction(false); });
+      });
+    } else {
+      ["_min","_max"].forEach(sfx=>{
+        const el=$("#"+id+sfx); if(!el) return;
+        el.addEventListener("keydown",e=>{ if(e.key==="Enter"){ AUC.page=1; loadAuction(false); } });
+      });
+    }
+  });
+
+  $("#aucApply").onclick=()=>{ AUC.page=1; loadAuction(false); };
+  $("#aucClear").onclick=()=>{
+    plan.forEach(f=>{
+      const id=AUC.filters[f.col];
+      if(f.kind==="range"){ ["_min","_max"].forEach(sfx=>{ const e=$("#"+id+sfx); if(e) e.value=""; }); }
+      else if(f.kind==="date"){ ["_from","_to"].forEach(sfx=>{ const e=$("#"+id+sfx); if(e) e.value=""; }); }
+      else { const e=$("#"+id); if(e){ e.value=""; if(e._paint) e._paint(); } }
+    });
+    AUC.page=1; loadAuction(false);
+  };
+  $("#aucExport").onclick=()=>exportCsv(AUC.rows,AUC.cols,"auction.csv");
+  AUC.built=true;
+}
+
+function aucParams(){
+  const p=new URLSearchParams();
+  p.set("limit","100"); p.set("offset",String((AUC.page-1)*100));
+  (AUC.plan||[]).forEach(({col,kind})=>{
+    const id=AUC.filters[col];
+    if(kind==="date"){
+      const a=$("#"+id+"_from"), b=$("#"+id+"_to");
+      if(a&&a.value) p.set("from_"+col,a.value);
+      if(b&&b.value) p.set("to_"+col,b.value);
+    } else if(kind==="range"){
+      const lo=$("#"+id+"_min"), hi=$("#"+id+"_max");
+      if(lo&&lo.value.trim()) p.set("min_"+col,lo.value.trim());
+      if(hi&&hi.value.trim()) p.set("max_"+col,hi.value.trim());
+    } else {
+      const el=$("#"+id);
+      if(el&&el.value.trim()) p.set(col,el.value.trim());
+    }
+  });
+  return p;
+}
+
+async function loadAuction(reset){
+  if(reset!==false) AUC.page=1;
+  $("#aucSrc").textContent="loading…";
+  try{
+    const res=await fetch("/api/auction?"+aucParams().toString());
+    if(res.status===404||res.status===405) throw new Error("api-missing");
+    const body=await res.json().catch(()=>({ok:false,error:`HTTP ${res.status}`}));
+    if(!body.ok) throw new Error(body.error||`HTTP ${res.status}`);
+    AUC.rows=body.rows||[]; AUC.cols=body.columns||[]; AUC.numeric=body.numeric||{}; AUC.dates=body.dates||{};
+    AUC.facets=body.facets||{}; AUC.err="";
+    buildAucFilters();
+    $("#aucSrc").textContent=`question ${body.card} · ${fmt(body.total)} lots`;
+    pager($("#aucPager"),AUC.page,body.pages||1,body.matched||0,p=>{ AUC.page=p; loadAuction(false); });
+    renderAuction(body);
+  }catch(e){
+    // the feed isn't reachable — run the tab on sample lots so it stays usable
+    AUC.err="";
+    const body=aucDemoResult();
+    AUC.rows=body.rows; AUC.cols=body.columns; AUC.numeric=body.numeric; AUC.dates=body.dates;
+    AUC.facets=body.facets;
+    buildAucFilters();
+    Object.entries(AUC.filters).forEach(([col,id])=>{
+      const el=$("#"+id);
+      if(el&&el._setOptions&&body.facets[col]) el._setOptions(body.facets[col].values||[]);
+    });
+    $("#aucSrc").textContent=`demo data · ${e.message==="api-missing"?"/api/auction not deployed":e.message}`;
+    pager($("#aucPager"),AUC.page,body.pages,body.matched,p=>{ AUC.page=p; loadAuction(false); });
+    renderAuction(body);
+  }
+}
+
+function renderAuction(body){
+  const cols=AUC.cols, rows=AUC.rows;
+  $("#aucTbl thead").innerHTML=cols.length
+    ? `<tr>${cols.map(c=>`<th>${esc(aucLabel(c))}</th>`).join("")}</tr>` : "";
+  $("#aucTbl tbody").innerHTML=rows.length
+    ? rows.map(r=>`<tr>${cols.map(c=>{
+        const v=r[c];
+        const blank=v===null||v===undefined||v==="";
+        const link=/url$/i.test(c)&&!blank;
+        return `<td class="${AUC.numeric[c]?"strong":""}" data-sort="${blank?"":esc(String(v))}">${
+          blank?"—":link?`<a href="${esc(v)}" target="_blank" rel="noopener">open ↗</a>`:esc(String(v))}</td>`;
+      }).join("")}</tr>`).join("")
+    : emptyRow(Math.max(cols.length,1),AUC.err);
+
+  const numCols=cols.filter(c=>AUC.numeric[c]);
+  $("#aucTbl tfoot").innerHTML=rows.length
+    ? `<tr>${cols.map((c,i)=>i===0?`<td>TOTAL</td>`
+        :AUC.numeric[c]?`<td>${fmt(Math.round(rows.reduce((s,r)=>s+num(r[c]),0)))}</td>`:`<td></td>`).join("")}</tr>` : "";
+  void numCols;
+
+  $("#aucCount").textContent=`· ${fmt(rows.length)}`;
+  const total=body?body.total:0, matched=body?body.matched:0;
+  $("#aucTabCount").textContent = (body&&matched!==total) ? `${fmt(matched)} / ${fmt(total)}` : fmt(total);
+
+  const t=body&&body.totals, all=body&&body.totals_all;
+  const money=v=>"$"+fmt(Math.round(Math.abs(v)));
+  const signed=v=>(v<0?"−":"+")+money(v);
+  const filtered=!!(all&&t&&t.lots!==all.lots);
+
+  $("#aucTotals").innerHTML=t?`
+    <div class="tot"><div class="k">TOTAL CARDS</div><div class="v">${fmt(t.cards)}</div>
+      <div class="s">across ${fmt(t.lots)} lot${t.lots===1?"":"s"}${filtered?` · ${fmt(all.cards)} all time`:""}</div></div>
+
+    <div class="tot"><div class="k">TOTAL COST</div><div class="v">${money(t.cost)}</div>
+      <div class="s">${t.cost_col?esc(aucLabel(t.cost_col).toLowerCase()):"no cost column"}${filtered?` · ${money(all.cost)} all time`:""}</div></div>
+
+    <div class="tot"><div class="k">TOTAL SOLD</div><div class="v gold">${money(t.sold)}</div>
+      <div class="s">${fmt(t.sold_count)} of ${fmt(t.cards)} sold${filtered?` · ${money(all.sold)} all time`:""}</div></div>
+
+    <div class="tot"><div class="k">TOTAL PROFIT</div>
+      <div class="v" style="color:${t.profit<0?"var(--red)":"var(--green)"}">${signed(t.profit)}</div>
+      <div class="s">sold less cost on ${fmt(t.sold_count)} sold${filtered&&all.profit!==undefined?` · ${signed(all.profit)} all time`:""}</div></div>
+
+    <div class="tot"><div class="k">MARGIN</div>
+      <div class="v" style="color:${t.margin===null?"var(--muted)":t.margin<0?"var(--red)":"var(--green)"}">${
+        t.margin===null?"—":(t.margin<0?"−":"+")+Math.abs(t.margin).toFixed(1)+"%"}</div>
+      <div class="s">profit ÷ cost${filtered&&all.margin!==null&&all.margin!==undefined?` · ${(all.margin<0?"−":"+")+Math.abs(all.margin).toFixed(1)}% all time`:""}</div></div>
+
+    <div class="tot"><div class="k">SHOWING</div><div class="v">${fmt(rows.length)}</div><div class="s">100 per page</div></div>`:"";
+}
 
 /* ---- google sheet: one link, many tabs ---- */
 const sheetIdOf=v=>{ const m=String(v).match(/\/d\/([a-zA-Z0-9-_]+)/); return m?m[1]:String(v).trim(); };
@@ -2526,7 +2885,7 @@ $("#homeLogo")&&($("#homeLogo").onclick=()=>{
   $$(".tab[data-page]").forEach(x=>x.classList.toggle("on",x.dataset.page==="doi"));
   currentPage="doi";
   $("#page-doi").classList.remove("hidden");
-  ["page-flow","page-dup","page-wh"].forEach(id=>$("#"+id).classList.add("hidden"));
+  ["page-flow","page-auc","page-dup","page-wh"].forEach(id=>$("#"+id).classList.add("hidden"));
   $("#toggleData").classList.remove("hidden");
   poOpen=null; applySec();
   resetOverview();
@@ -2545,6 +2904,8 @@ $("#refreshAll").onclick=async ()=>{
       const n=await loadWipFromMetabase();
       setPullStatus(`${fmt(n)} POs from Metabase${Object.keys(SHEETMAP).length?" · names and costs from the Order List":""}.`);
       toast(`${fmt(n)} POs refreshed`);
+    } else if(currentPage==="auc"){
+      await loadAuction(); toast("Auction refreshed");
     } else if(currentPage==="dup"){
       await loadDuplicates(); toast("Duplicates refreshed");
     } else if(currentPage==="wh"){
@@ -2574,10 +2935,12 @@ $$(".tab[data-page]").forEach(b=>b.onclick=()=>{
   poOpen=null;                       // leaving the tab closes an open PO
   $("#page-doi").classList.toggle("hidden",pg!=="doi");
   $("#page-flow").classList.toggle("hidden",pg!=="flow");
+  $("#page-auc").classList.toggle("hidden",pg!=="auc");
   $("#page-dup").classList.toggle("hidden",pg!=="dup");
   $("#page-wh").classList.toggle("hidden",pg!=="wh");
   $("#toggleData").classList.toggle("hidden",pg!=="doi");
   if(pg==="flow"){ renderFlow(); autoPullSports(); }
+  if(pg==="auc"){ if(!AUC.rows.length) loadAuction(); }
   if(pg==="dup"){ if(!DUPES.length) loadDuplicates(); else renderDup(); }
   if(pg==="wh"){ if(!WHOUSE.length) loadWarehouse(); }
 });

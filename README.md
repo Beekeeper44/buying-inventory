@@ -70,6 +70,7 @@ them public.
     /api/duplicates                         duplicate cards, question 36730 (Metabase)
     /api/warehouse                          warehouse cards, question 4131 (Metabase)
     /api/wip                                WIP detail, question 36763 (Metabase)
+    /api/auction                            auction lots (Metabase, AUCTION_QUESTION)
     /api/wip?raw=1                          its column names, to confirm the mapping
     /api/sports                             sport split per PO (Metabase)
 
@@ -111,6 +112,12 @@ server-side on sport, set, player, parallel, tag, grading company, grade and a
 min/max estimated value. Dropdown options come from the data itself, so new
 sports or graders appear without a change here. Override the id with
 `DUPLICATES_QUESTION`.
+
+`/api/auction` runs question 39238 (Card Auction). Override with
+`AUCTION_QUESTION` if it moves. It adapts to whatever that question returns — the table, the filters and the
+totals are all built from its columns, so no code change is needed when the
+question changes. Text columns become checkbox dropdowns, numeric ones get
+min/max boxes, and any column ending in `url` renders as a link.
 
 `/api/warehouse` runs question 4131 the same way, filtered on sport, tag, cert
 number, AC number, PO number, set, player, parallel, grading company, grade and
